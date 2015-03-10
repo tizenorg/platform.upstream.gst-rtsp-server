@@ -1995,7 +1995,7 @@ gst_rtsp_wfd_client_set_video_supported_resolution (GstRTSPWFDClient * client,
   GstRTSPResult res = GST_RTSP_OK;
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
   priv->video_resolution_supported = supported_reso;
-  GST_DEBUG ("Resolution : %lld", supported_reso);
+  GST_DEBUG ("Resolution : %"G_GUINT64_FORMAT, supported_reso);
 
   return res;
 }
