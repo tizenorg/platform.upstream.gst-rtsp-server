@@ -39,11 +39,10 @@ CFLAGS+=" -DEXPORT_API=\"__attribute__((visibility(\\\"default\\\")))\" "; expor
 LDFLAGS+="-Wl,--rpath=%{_prefix}/lib -Wl,--hash-style=both -Wl,--as-needed"; export LDFLAGS
 
 # always enable sdk build. This option should go away
-./configure --enable-sdk --prefix=%{_prefix} --disable-static
+%configure --disable-static
 
 # Call make instruction with smp support
-#make %{?jobs:-j%jobs}
-make
+make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}

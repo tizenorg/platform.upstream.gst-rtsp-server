@@ -1116,9 +1116,9 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   if (msg->av_format_change_timing) {
     g_string_append_printf (lines, "wfd_av_format_change_timing");
     g_string_append_printf (lines, ":");
-    g_string_append_printf (lines, " %10llu",
+    g_string_append_printf (lines, " %10"G_GUINT64_FORMAT,
         msg->av_format_change_timing->PTS);
-    g_string_append_printf (lines, " %10llu",
+    g_string_append_printf (lines, " %10"G_GUINT64_FORMAT,
         msg->av_format_change_timing->DTS);
     g_string_append_printf (lines, "\r\n");
   }
@@ -1127,7 +1127,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
     g_string_append_printf (lines, "wfd_preferred_display_mode");
     g_string_append_printf (lines, ":");
     if (msg->preferred_display_mode->displaymodesupported) {
-      g_string_append_printf (lines, " %06llu",
+      g_string_append_printf (lines, " %06"G_GUINT64_FORMAT,
           msg->preferred_display_mode->p_clock);
       g_string_append_printf (lines, " %04x", msg->preferred_display_mode->H);
       g_string_append_printf (lines, " %04x", msg->preferred_display_mode->HB);

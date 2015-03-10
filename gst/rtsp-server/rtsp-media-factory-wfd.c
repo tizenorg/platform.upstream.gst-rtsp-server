@@ -317,9 +317,9 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
   }
 
   GST_INFO_OBJECT (factory, "audio device : %s", priv->audio_device);
-  GST_INFO_OBJECT (factory, "audio latency time  : %lld",
+  GST_INFO_OBJECT (factory, "audio latency time  : %"G_GUINT64_FORMAT,
       priv->audio_latency_time);
-  GST_INFO_OBJECT (factory, "audio_buffer_time  : %lld",
+  GST_INFO_OBJECT (factory, "audio_buffer_time  : %"G_GUINT64_FORMAT,
       priv->audio_buffer_time);
   GST_INFO_OBJECT (factory, "audio_do_timestamp  : %d",
       priv->audio_do_timestamp);
