@@ -1153,6 +1153,8 @@ typedef enum
   M4_RES_MSG,
   M5_REQ_MSG,
   TEARDOWN_TRIGGER,
+  PLAY_TRIGGER,
+  PAUSE_TRIGGER,
 } GstWFDMessageType;
 
 static gboolean
@@ -1462,6 +1464,16 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
     g_string_append (buf, "\r\n");
     *len = buf->len;
     *data = g_string_free (buf, FALSE);
+  } else if (msg_type == PLAY_TRIGGER) {
+    g_string_append (buf, "wfd_trigger_method: PLAY");
+    g_string_append (buf, "\r\n");
+    *len = buf->len;
+    *data = g_string_free (buf, FALSE);
+  } else if (msg_type == PAUSE_TRIGGER) {
+    g_string_append (buf, "wfd_trigger_method: PAUSE");
+    g_string_append (buf, "\r\n");
+    *len = buf->len;
+    *data = g_string_free (buf, FALSE);
   } else {
     return;
   }
@@ -1682,6 +1694,80 @@ prepare_trigger_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
       msglength = g_string_new ("");
       g_string_append_printf (msglength, "%d", msglen);
       GST_DEBUG ("Trigger TEARDOWN server side message body: %s", msg);
+
+      /* add content-length type */
+      res =
+          gst_rtsp_message_add_header (request, GST_RTSP_HDR_CONTENT_LENGTH,
+          g_string_free (msglength, FALSE));
+      if (res != GST_RTSP_OK) {
+        GST_ERROR_OBJECT (client, "Failed to add header to rtsp message...");
+        goto error;
+      }
+
+      res = gst_rtsp_message_set_body (request, (guint8 *) msg, msglen);
+      if (res != GST_RTSP_OK) {
+        GST_ERROR_OBJECT (client, "Failed to add header to rtsp message...");
+        goto error;
+      }
+
+      g_free (msg);
+      break;
+    }
+    case WFD_TRIGGER_PLAY:{
+      gchar *msg;
+      guint msglen = 0;
+      GString *msglength;
+
+      /* add content type */
+      res =
+          gst_rtsp_message_add_header (request, GST_RTSP_HDR_CONTENT_TYPE,
+          "text/parameters");
+      if (res != GST_RTSP_OK) {
+        GST_ERROR_OBJECT (client, "Failed to add header to rtsp request...");
+        goto error;
+      }
+
+      _set_wfd_message_body (client, PLAY_TRIGGER, &msg, &msglen);
+      msglength = g_string_new ("");
+      g_string_append_printf (msglength, "%d", msglen);
+      GST_DEBUG ("Trigger PLAY server side message body: %s", msg);
+
+      /* add content-length type */
+      res =
+          gst_rtsp_message_add_header (request, GST_RTSP_HDR_CONTENT_LENGTH,
+          g_string_free (msglength, FALSE));
+      if (res != GST_RTSP_OK) {
+        GST_ERROR_OBJECT (client, "Failed to add header to rtsp message...");
+        goto error;
+      }
+
+      res = gst_rtsp_message_set_body (request, (guint8 *) msg, msglen);
+      if (res != GST_RTSP_OK) {
+        GST_ERROR_OBJECT (client, "Failed to add header to rtsp message...");
+        goto error;
+      }
+
+      g_free (msg);
+      break;
+    }
+    case WFD_TRIGGER_PAUSE:{
+      gchar *msg;
+      guint msglen = 0;
+      GString *msglength;
+
+      /* add content type */
+      res =
+          gst_rtsp_message_add_header (request, GST_RTSP_HDR_CONTENT_TYPE,
+          "text/parameters");
+      if (res != GST_RTSP_OK) {
+        GST_ERROR_OBJECT (client, "Failed to add header to rtsp request...");
+        goto error;
+      }
+
+      _set_wfd_message_body (client, PAUSE_TRIGGER, &msg, &msglen);
+      msglength = g_string_new ("");
+      g_string_append_printf (msglength, "%d", msglen);
+      GST_DEBUG ("Trigger PAUSE server side message body: %s", msg);
 
       /* add content-length type */
       res =
@@ -2065,14 +2151,14 @@ keep_alive_condition(gpointer userdata)
 
   GST_DEBUG("sending keep alive message");
   res = handle_M16_message(client);
-  if(res) {
+  if(res == GST_RTSP_OK) {
     priv->keep_alive_flag = FALSE;
-  }
-  else {
+  } else {
     GST_ERROR_OBJECT (client, "Failed to send Keep Alive Message");
     g_mutex_unlock(&priv->keep_alive_lock);
     return FALSE;
   }
+
   g_mutex_unlock(&priv->keep_alive_lock);
   return TRUE;
 }
