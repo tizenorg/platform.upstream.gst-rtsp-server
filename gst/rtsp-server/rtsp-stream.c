@@ -1734,7 +1734,7 @@ gst_rtsp_stream_join_bin (GstRTSPStream * stream, GstBin * bin,
   priv->recv_sink[1] = gst_element_get_request_pad (rtpbin, name);
   g_free (name);
 
-  /* get the session, TODO-WFD: This session needs to be decrease ref count? */
+  /* get the session */
   g_signal_emit_by_name (rtpbin, "get-internal-session", idx, &priv->session);
 
   g_signal_connect (priv->session, "on-new-ssrc", (GCallback) on_new_ssrc,
@@ -2035,6 +2035,8 @@ gst_rtsp_stream_leave_bin (GstRTSPStream * stream, GstBin * bin,
 
   if (priv->srtpenc)
     gst_object_unref (priv->srtpenc);
+  if (priv->srtpdec)
+    gst_object_unref (priv->srtpdec);
 
   priv->is_joined = FALSE;
   g_mutex_unlock (&priv->lock);
@@ -2473,6 +2475,48 @@ gst_rtsp_stream_get_rtcp_socket (GstRTSPStream * stream, GSocketFamily family)
   g_object_get (priv->udpsink[1], name, &socket, NULL);
 
   return socket;
+}
+
+/**
+ * gst_rtsp_stream_set_seqnum:
+ * @stream: a #GstRTSPStream
+ * @seqnum: a new sequence number
+ *
+ * Configure the sequence number in the payloader of @stream to @seqnum.
+ */
+void
+gst_rtsp_stream_set_seqnum_offset (GstRTSPStream * stream, guint16 seqnum)
+{
+  GstRTSPStreamPrivate *priv;
+
+  g_return_if_fail (GST_IS_RTSP_STREAM (stream));
+
+  priv = stream->priv;
+
+  g_object_set (G_OBJECT (priv->payloader), "seqnum-offset", seqnum, NULL);
+}
+
+/**
+ * gst_rtsp_stream_get_seqnum:
+ * @stream: a #GstRTSPStream
+ *
+ * Get the configured sequence number in the payloader of @stream.
+ *
+ * Returns: the sequence number of the payloader.
+ */
+guint16
+gst_rtsp_stream_get_current_seqnum (GstRTSPStream * stream)
+{
+  GstRTSPStreamPrivate *priv;
+  guint seqnum;
+
+  g_return_val_if_fail (GST_IS_RTSP_STREAM (stream), 0);
+
+  priv = stream->priv;
+
+  g_object_get (G_OBJECT (priv->payloader), "seqnum", &seqnum, NULL);
+
+  return seqnum;
 }
 
 /**

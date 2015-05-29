@@ -717,6 +717,7 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
   GstElement *vcaps = NULL;
   gchar *vcodec = NULL;
   GstElement *venc = NULL;
+  GstElement *vparse = NULL;
   GstElement *vqueue = NULL;
   GstRTSPMediaFactoryWFDPrivate *priv = NULL;
 
@@ -763,14 +764,21 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
   g_object_set (venc, "idr-period", 120, NULL);
   g_object_set (venc, "skip-inbuf", priv->video_enc_skip_inbuf_value, NULL);
 
+  vparse = gst_element_factory_make ("h264parse", "videoparse");
+  if (NULL == vparse) {
+    GST_ERROR_OBJECT (factory, "failed to create h264 parse element");
+    goto create_error;
+  }
+  g_object_set (vparse, "config-interval", 1, NULL);
+
   vqueue = gst_element_factory_make ("queue", "video-queue");
   if (!vqueue) {
     GST_ERROR_OBJECT (factory, "failed to create video queue element");
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vqueue, NULL);
-  if (!gst_element_link_many (videosrc, vcaps, venc, vqueue, NULL)) {
+  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  if (!gst_element_link_many (videosrc, vcaps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
   }

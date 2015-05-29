@@ -46,7 +46,6 @@
 #include "rtsp-media-factory-wfd.h"
 #include "rtsp-sdp.h"
 #include "rtsp-params.h"
-#include "gstwfdmessage.h"
 
 #define GST_RTSP_WFD_CLIENT_GET_PRIVATE(obj)  \
    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_RTSP_WFD_CLIENT, GstRTSPWFDClientPrivate))
@@ -2082,6 +2081,18 @@ gst_rtsp_wfd_client_set_video_supported_resolution (GstRTSPWFDClient * client,
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
   priv->video_resolution_supported = supported_reso;
   GST_DEBUG ("Resolution : %"G_GUINT64_FORMAT, supported_reso);
+
+  return res;
+}
+
+GstRTSPResult
+gst_rtsp_wfd_client_set_video_native_resolution (GstRTSPWFDClient * client,
+    guint64 native_reso)
+{
+  GstRTSPResult res = GST_RTSP_OK;
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  priv->video_native_resolution = native_reso;
+  GST_DEBUG ("Native Resolution : %"G_GUINT64_FORMAT, native_reso);
 
   return res;
 }

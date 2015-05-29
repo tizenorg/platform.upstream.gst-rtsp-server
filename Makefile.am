@@ -3,9 +3,8 @@ DISTCHECK_CONFIGURE_FLAGS=--enable-gtk-doc
 SUBDIRS = 		\
 	gst \
 	common \
-	pkgconfig \
-	docs \
 	examples \
+	pkgconfig \
 	tests
 
 DIST_SUBDIRS = $(SUBDIRS)

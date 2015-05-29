@@ -78,7 +78,8 @@ GType                 gst_rtsp_wfd_server_get_type             (void);
 GstRTSPWFDServer *    gst_rtsp_wfd_server_new                  (void);
 GstRTSPResult         gst_rtsp_wfd_server_trigger_request      (GstRTSPServer *server, GstWFDTriggerType type);
 
-GstRTSPResult gst_rtsp_wfd_server_set_supported_reso(GstRTSPWFDServer *server, guint64 supported_reso);
+GstRTSPResult         gst_rtsp_wfd_server_set_supported_reso (GstRTSPWFDServer *server, guint64 supported_reso);
+GstRTSPResult         gst_rtsp_wfd_server_set_video_native_reso    (GstRTSPWFDServer *server, guint64 native_reso);
 
 #if 0
 void                  gst_rtsp_server_set_address          (GstRTSPServer *server, const gchar *address);

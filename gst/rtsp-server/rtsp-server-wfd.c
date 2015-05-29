@@ -71,6 +71,7 @@ struct _GstRTSPWFDServerPrivate
 
   /* the clients that are connected */
   GList *clients;
+  guint64 native_resolution;
   guint64 supported_resolution;
 };
 
@@ -118,6 +119,7 @@ gst_rtsp_wfd_server_init (GstRTSPWFDServer * server)
   GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE (server);
 
   server->priv = priv;
+  server->priv->native_resolution = 0;
   server->priv->supported_resolution = 1;
   GST_INFO_OBJECT (server, "New server is initialized");
 }
@@ -227,6 +229,9 @@ create_client_wfd (GstRTSPServer * server)
   gst_rtsp_wfd_client_set_video_supported_resolution (client,
         priv->supported_resolution);
 
+  gst_rtsp_wfd_client_set_video_native_resolution (client,
+        priv->native_resolution);
+
   GST_RTSP_WFD_SERVER_UNLOCK (server);
 
   return GST_RTSP_CLIENT (client);
@@ -278,4 +283,19 @@ gst_rtsp_wfd_server_set_supported_reso(GstRTSPWFDServer *server, guint64 support
 
   GST_RTSP_WFD_SERVER_UNLOCK (server);
   return res;
+}
+GstRTSPResult
+gst_rtsp_wfd_server_set_video_native_reso (GstRTSPWFDServer *server, guint64 native_reso)
+{
+	  GstRTSPResult res = GST_RTSP_OK;
+	  GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE(server);
+
+	  g_return_val_if_fail (GST_IS_RTSP_WFD_SERVER (server), GST_RTSP_ERROR);
+
+	  GST_RTSP_WFD_SERVER_LOCK (server);
+
+	  priv->native_resolution = native_reso;
+
+	  GST_RTSP_WFD_SERVER_UNLOCK (server);
+	  return res;
 }

@@ -34,6 +34,7 @@ typedef struct _GstRTSPWFDClientPrivate GstRTSPWFDClientPrivate;
 #include "rtsp-sdp.h"
 #include "rtsp-auth.h"
 #include "rtsp-client.h"
+#include "gstwfdmessage.h"
 
 #define GST_TYPE_RTSP_WFD_CLIENT              (gst_rtsp_wfd_client_get_type ())
 #define GST_IS_RTSP_WFD_CLIENT(obj)           (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GST_TYPE_RTSP_WFD_CLIENT))
@@ -122,7 +123,8 @@ GstRTSPResult         gst_rtsp_wfd_client_trigger_request (
 
 GstRTSPResult         gst_rtsp_wfd_client_set_video_supported_resolution (
                           GstRTSPWFDClient * client, guint64 supported_reso);
-
+GstRTSPResult         gst_rtsp_wfd_client_set_video_native_resolution (
+		                      GstRTSPWFDClient * client, guint64 native_reso);
 /**
  * GstRTSPWFDClientSessionFilterFunc:
  * @client: a #GstRTSPWFDClient object

@@ -1,6 +1,6 @@
 Name:       gst-rtsp-server
 Summary:    Multimedia Framework Library
-Version:    1.4.1
+Version:    1.4.5
 Release:    0
 Group:      System/Libraries
 License:    LGPLv2+
