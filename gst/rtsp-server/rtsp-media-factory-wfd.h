@@ -117,6 +117,8 @@ GstElement *gst_rtsp_media_factory_wfd_create_element (GstRTSPMediaFactoryWFD *
 void  gst_rtsp_media_factory_wfd_set (GstRTSPMediaFactoryWFD * factory,
     guint8 videosrc_type, gchar *audio_device, guint64 audio_latency_time,
     guint64 audio_buffer_time, gboolean audio_do_timestamp, guint mtu_size);
+void  gst_rtsp_media_factory_wfd_set_encoders (GstRTSPMediaFactoryWFD * factory,
+    gchar *video_encoder, gchar *audio_encoder_aac, gchar *audio_encoder_ac3);
 void  gst_rtsp_media_factory_wfd_set_dump_ts (GstRTSPMediaFactoryWFD * factory,
     gboolean dump_ts);
 void gst_rtsp_media_factory_wfd_set_negotiated_resolution (GstRTSPMediaFactory *factory,

@@ -59,6 +59,7 @@ struct _GstRTSPMediaFactoryWFDPrivate
 
   guint8 videosrc_type;
   guint8 video_codec;
+  gchar *video_encoder;
   guint video_bitrate;
   guint video_width;
   guint video_height;
@@ -67,6 +68,8 @@ struct _GstRTSPMediaFactoryWFDPrivate
   GstElement *video_queue;
 
   gchar *audio_device;
+  gchar *audio_encoder_aac;
+  gchar *audio_encoder_ac3;
   guint8 audio_codec;
   guint64 audio_latency_time;
   guint64 audio_buffer_time;
@@ -163,6 +166,18 @@ void  gst_rtsp_media_factory_wfd_set (GstRTSPMediaFactoryWFD * factory,
   priv->mtu_size = mtu_size;
 }
 
+void  gst_rtsp_media_factory_wfd_set_encoders (GstRTSPMediaFactoryWFD * factory,
+    gchar *video_encoder, gchar *audio_encoder_aac, gchar *audio_encoder_ac3)
+{
+  GstRTSPMediaFactoryWFDPrivate *priv =
+      GST_RTSP_MEDIA_FACTORY_WFD_GET_PRIVATE (factory);
+  factory->priv = priv;
+
+  priv->video_encoder = video_encoder;
+  priv->audio_encoder_aac = audio_encoder_aac;
+  priv->audio_encoder_ac3 = audio_encoder_ac3;
+}
+
 void  gst_rtsp_media_factory_wfd_set_dump_ts (GstRTSPMediaFactoryWFD * factory,
     gboolean dump_ts)
 {
@@ -199,6 +214,7 @@ gst_rtsp_media_factory_wfd_init (GstRTSPMediaFactoryWFD * factory)
   //priv->videosrc_type = GST_WFD_VSRC_CAMERASRC;
   priv->videosrc_type = GST_WFD_VSRC_VIDEOTESTSRC;
   priv->video_codec = GST_WFD_VIDEO_H264;
+  priv->video_encoder = g_strdup ("omxh264enc");
   priv->video_bitrate = 200000;
   priv->video_width = 640;
   priv->video_height = 480;
@@ -207,6 +223,8 @@ gst_rtsp_media_factory_wfd_init (GstRTSPMediaFactoryWFD * factory)
 
   priv->audio_device = g_strdup ("alsa_output.1.analog-stereo.monitor");
   priv->audio_codec = GST_WFD_AUDIO_AAC;
+  priv->audio_encoder_aac = g_strdup ("avenc_aac");
+  priv->audio_encoder_ac3 = g_strdup ("avenc_ac3");
   priv->audio_latency_time = 10000;
   priv->audio_buffer_time = 200000;
   priv->audio_do_timestamp = FALSE;
@@ -229,6 +247,13 @@ gst_rtsp_media_factory_wfd_finalize (GObject * obj)
 
   if (priv->audio_device)
     g_free (priv->audio_device);
+  if (priv->audio_encoder_aac)
+    g_free (priv->audio_encoder_aac);
+  if (priv->audio_encoder_ac3)
+    g_free (priv->audio_encoder_ac3);
+
+  if (priv->video_encoder)
+    g_free (priv->video_encoder);
 
   G_OBJECT_CLASS (gst_rtsp_media_factory_wfd_parent_class)->finalize (obj);
 }
@@ -412,10 +437,10 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
   }
 
   if (priv->audio_codec == GST_WFD_AUDIO_AAC) {
-    acodec = g_strdup ("avenc_aac");
+    acodec = g_strdup (priv->audio_encoder_aac);
     is_enc_req = TRUE;
   } else if (priv->audio_codec == GST_WFD_AUDIO_AC3) {
-    acodec = g_strdup ("avenc_ac3");
+    acodec = g_strdup (priv->audio_encoder_ac3);
     is_enc_req = TRUE;
   } else if (priv->audio_codec == GST_WFD_AUDIO_LPCM) {
     GST_DEBUG_OBJECT (factory, "No codec required, raw data will be sent");
@@ -510,7 +535,7 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
       NULL);
 
   if (priv->video_codec == GST_WFD_VIDEO_H264)
-    vcodec = g_strdup ("x264enc");
+    vcodec = g_strdup (priv->video_encoder);
   else {
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
     g_free (vcodec);
@@ -603,7 +628,7 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
       NULL);
 
   if (priv->video_codec == GST_WFD_VIDEO_H264)
-    vcodec = g_strdup ("omxh264enc");
+    vcodec = g_strdup (priv->video_encoder);
   else {
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
     goto create_error;
@@ -698,7 +723,7 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
       NULL);
 
   if (priv->video_codec == GST_WFD_VIDEO_H264)
-    vcodec = g_strdup ("x264enc");
+    vcodec = g_strdup (priv->video_encoder);
   else {
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
     g_free (vcodec);
@@ -794,7 +819,7 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
       NULL);
 
   if (priv->video_codec == GST_WFD_VIDEO_H264) {
-    vcodec = g_strdup ("omxh264enc");
+    vcodec = g_strdup (priv->video_encoder);
   } else {
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
     goto create_error;
