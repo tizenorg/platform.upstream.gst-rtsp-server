@@ -117,6 +117,9 @@ GType                 gst_rtsp_wfd_client_get_type          (void);
 
 GstRTSPWFDClient *    gst_rtsp_wfd_client_new               (void);
 
+void                  gst_rtsp_wfd_client_set_host_address  (
+                          GstRTSPWFDClient *client, const gchar * address);
+
 void                  gst_rtsp_wfd_client_start_wfd(GstRTSPWFDClient *client);
 GstRTSPResult         gst_rtsp_wfd_client_trigger_request (
                           GstRTSPWFDClient * client, GstWFDTriggerType type);

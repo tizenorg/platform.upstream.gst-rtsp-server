@@ -72,6 +72,9 @@ struct _GstRTSPWFDClientPrivate
   guint8 m3_done;
   guint8 m4_done;
 
+  /* Host's URL info */
+  gchar *host_address;
+
   /* Parameters for WIFI-DISPLAY */
   guint caCodec;
   guint cFreq;
@@ -236,6 +239,8 @@ gst_rtsp_wfd_client_init (GstRTSPWFDClient * client)
   priv->video_resolution_supported = GST_WFD_CEA_640x480P60;
   priv->keep_alive_flag = FALSE;
   g_mutex_init (&priv->keep_alive_lock);
+
+  priv->host_address = NULL;
   GST_INFO_OBJECT (client, "Client is initialized");
 }
 
@@ -755,7 +760,9 @@ wfd_make_path_from_uri (GstRTSPClient * client, const GstRTSPUrl * uri)
 {
   gchar *path;
 
+  GST_DEBUG_OBJECT (client, "Got URI host : %s", uri->host);
   GST_DEBUG_OBJECT (client, "Got URI abspath : %s", uri->abspath);
+
   path = g_strdup ("/wfd1.0/streamid=0");
 
   return path;
@@ -1348,14 +1355,21 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
       goto error;
     }
 
-    buf = g_string_new ("");
     g_string_append_printf (buf, "rtsp://");
-    /* FIXME-WFD : Should set host's URL, but url->host is client's URL */
-    g_string_append (buf, url->host);
+
+    if (priv->host_address) {
+      g_string_append (buf, priv->host_address);
+    } else {
+      GST_ERROR_OBJECT (client, "Failed to get host address");
+      if (buf) g_string_free (buf, FALSE);
+      goto error;
+    }
+
     g_string_append_printf (buf, "/wfd1.0/streamid=0");
     wfd_res =
         gst_wfd_message_set_presentation_url (msg, g_string_free (buf, FALSE),
         NULL);
+
     if (wfd_res != GST_WFD_OK) {
       GST_ERROR_OBJECT (client, "Failed to set presentation url");
       goto error;
@@ -2216,4 +2230,18 @@ void wfd_set_keep_alive_condition(GstRTSPClient * client)
   wfd_client = GST_RTSP_WFD_CLIENT(client);
 
   g_timeout_add((DEFAULT_WFD_TIMEOUT-5)*1000, keep_alive_condition, wfd_client);
+}
+
+void
+gst_rtsp_wfd_client_set_host_address (GstRTSPWFDClient *client, const gchar * address)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_if_fail (priv != NULL);
+
+  if (priv->host_address) {
+    g_free (priv->host_address);
+  }
+
+  priv->host_address = g_strdup (address);
 }

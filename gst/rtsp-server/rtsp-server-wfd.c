@@ -192,6 +192,8 @@ client_connected_wfd (GstRTSPServer * server, GstRTSPClient * client)
 {
   GST_INFO_OBJECT (server, "Client is connected");
 
+  gst_rtsp_wfd_client_set_host_address (GST_RTSP_WFD_CLIENT_CAST (client),
+      gst_rtsp_server_get_address (server));
   g_idle_add (_start_wfd, client);
   return;
 }
