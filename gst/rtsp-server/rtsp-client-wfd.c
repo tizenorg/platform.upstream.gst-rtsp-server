@@ -77,6 +77,7 @@ struct _GstRTSPWFDClientPrivate
 
   /* Parameters for WIFI-DISPLAY */
   guint caCodec;
+  guint8 audio_codec;
   guint cFreq;
   guint cChanels;
   guint cBitwidth;
@@ -237,6 +238,7 @@ gst_rtsp_wfd_client_init (GstRTSPWFDClient * client)
   priv->protection_enabled = FALSE;
   priv->video_native_resolution = GST_WFD_VIDEO_CEA_RESOLUTION;
   priv->video_resolution_supported = GST_WFD_CEA_640x480P60;
+  priv->audio_codec = GST_WFD_AUDIO_AAC;
   priv->keep_alive_flag = FALSE;
   g_mutex_init (&priv->keep_alive_lock);
 
@@ -346,6 +348,22 @@ wfd_get_param_request_done (GstRTSPWFDClient * client)
   }
 
   return;
+}
+
+static guint
+wfd_get_prefered_audio_codec (guint8 srcAudioCodec,
+    guint sinkAudioCodec)
+{
+  int i = 0;
+  guint codec = 0;
+  for (i = 0; i < 8; i++) {
+    if (((sinkAudioCodec << i) & 0x80)
+        && ((srcAudioCodec << i) & 0x80)) {
+      codec = (0x01 << (7 - i));
+      break;
+    }
+  }
+  return codec;
 }
 
 static guint64
@@ -1184,6 +1202,52 @@ typedef enum
 } GstWFDMessageType;
 
 static gboolean
+_set_negotiated_audio_codec (GstRTSPWFDClient *client,
+    guint audio_codec)
+{
+  GstRTSPClient *parent_client = GST_RTSP_CLIENT_CAST (client);
+
+  GstRTSPMediaFactory *factory = NULL;
+  GstRTSPMountPoints *mount_points = NULL;
+  gchar *path = NULL;
+  gint matched = 0;
+  gboolean ret = TRUE;
+
+  if (!(mount_points = gst_rtsp_client_get_mount_points (parent_client))) {
+    ret = FALSE;
+    GST_ERROR_OBJECT (client, "Failed to set negotiated audio codec: no mount points...");
+    goto no_mount_points;
+  }
+
+  path = g_strdup(WFD_MOUNT_POINT);
+  if (!path) {
+    ret = FALSE;
+    GST_ERROR_OBJECT (client, "Failed to set negotiated audio codec: no path...");
+    goto no_path;
+  }
+
+  if (!(factory = gst_rtsp_mount_points_match (mount_points,
+          path, &matched))) {
+    GST_ERROR_OBJECT (client, "Failed to set negotiated audio codec: no factory...");
+    ret = FALSE;
+    goto no_factory;
+  }
+
+  gst_rtsp_media_factory_wfd_set_audio_codec (factory,
+      audio_codec);
+  ret = TRUE;
+
+  g_object_unref(factory);
+
+no_factory:
+  g_free(path);
+no_path:
+  g_object_unref(mount_points);
+no_mount_points:
+  return ret;
+}
+
+static gboolean
 _set_negotiated_resolution(GstRTSPWFDClient *client,
     guint32 width, guint32 height)
 {
@@ -1375,16 +1439,12 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
       goto error;
     }
 
-    /* set the preffered audio formats */
-    if (priv->caCodec & GST_WFD_AUDIO_AC3) {
-      GST_ERROR_OBJECT (client, "AC3 is not supported");
-      goto error;
-    } else if (priv->caCodec & GST_WFD_AUDIO_AAC) {
-      taudiocodec = GST_WFD_AUDIO_AAC;
-    } else if (priv->caCodec & GST_WFD_AUDIO_LPCM) {
-      taudiocodec = GST_WFD_AUDIO_LPCM;
-    }
+    taudiocodec = wfd_get_prefered_audio_codec (priv->audio_codec, priv->caCodec);
     priv->caCodec = taudiocodec;
+    if (!_set_negotiated_audio_codec(client, priv->caCodec)) {
+      GST_ERROR_OBJECT (client, "Failed to set negotiated "
+          "audio codec to media factory...");
+    }
 
     if (priv->cFreq & GST_WFD_FREQ_48000)
       taudiofreq = GST_WFD_FREQ_48000;
@@ -2137,6 +2197,21 @@ gst_rtsp_wfd_client_set_video_native_resolution (GstRTSPWFDClient * client,
 
   priv->video_native_resolution = native_reso;
   GST_DEBUG ("Native Resolution : %"G_GUINT64_FORMAT, native_reso);
+
+  return res;
+}
+
+GstRTSPResult
+gst_rtsp_wfd_client_set_audio_codec (GstRTSPWFDClient * client,
+    guint8 audio_codec)
+{
+  GstRTSPResult res = GST_RTSP_OK;
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_val_if_fail (priv != NULL, GST_RTSP_EINVAL);
+
+  priv->audio_codec = audio_codec;
+  GST_DEBUG ("Audio codec : %d", audio_codec);
 
   return res;
 }

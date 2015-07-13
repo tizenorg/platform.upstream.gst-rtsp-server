@@ -73,6 +73,7 @@ struct _GstRTSPWFDServerPrivate
   GList *clients;
   guint64 native_resolution;
   guint64 supported_resolution;
+  guint8 audio_codec;
 };
 
 G_DEFINE_TYPE (GstRTSPWFDServer, gst_rtsp_wfd_server, GST_TYPE_RTSP_SERVER);
@@ -123,6 +124,7 @@ gst_rtsp_wfd_server_init (GstRTSPWFDServer * server)
   server->priv = priv;
   server->priv->native_resolution = 0;
   server->priv->supported_resolution = 1;
+  server->priv->audio_codec = 2;
   GST_INFO_OBJECT (server, "New server is initialized");
 }
 
@@ -237,6 +239,9 @@ create_client_wfd (GstRTSPServer * server)
 
   gst_rtsp_wfd_client_set_video_native_resolution (client,
         priv->native_resolution);
+
+  gst_rtsp_wfd_client_set_audio_codec (client,
+        priv->audio_codec);
 
   GST_RTSP_WFD_SERVER_UNLOCK (server);
 
