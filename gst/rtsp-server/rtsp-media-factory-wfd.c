@@ -299,6 +299,7 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
 {
   GstElement *audiosrc = NULL;
   GstElement *acaps = NULL;
+  GstElement *acaps2 = NULL;
   GstElement *aenc = NULL;
   GstElement *audio_convert = NULL;
   GstElement *aqueue = NULL;
@@ -341,11 +342,32 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
     gint64 block_size = 1920;
     g_object_set (audiosrc, "blocksize", (gint64) block_size, NULL);
 
-    audio_convert = gst_element_factory_make ("audioconvert", "audio_convert");
+    audio_convert = gst_element_factory_make ("capssetter", "audio_convert");
     if (NULL == audio_convert) {
       GST_ERROR_OBJECT (factory, "failed to create audio convert element");
       goto create_error;
     }
+    g_object_set (audio_convert, "caps", gst_caps_new_simple("audio/x-lpcm",
+              "width", G_TYPE_INT, 16,
+              "rate", G_TYPE_INT, 48000,
+              "channels", G_TYPE_INT, 2,
+              "dynamic_range", G_TYPE_INT, 0,
+              "emphasis", G_TYPE_BOOLEAN, FALSE,
+              "mute", G_TYPE_BOOLEAN, FALSE, NULL), NULL);
+    g_object_set (audio_convert, "join", (gboolean)FALSE, NULL);
+    g_object_set (audio_convert, "replace", (gboolean)TRUE, NULL);
+
+    acaps2 = gst_element_factory_make ("capsfilter", "audiocaps2");
+    if (NULL == acaps2) {
+      GST_ERROR_OBJECT (factory, "failed to create audio capsilfter element");
+      goto create_error;
+    }
+    /* In case of LPCM, uses big endian */
+        g_object_set (G_OBJECT (acaps2), "caps",
+            gst_caps_new_simple ("audio/x-raw", "format", G_TYPE_STRING, "S16BE",
+                /* In case of LPCM, uses big endian */
+                "rate", G_TYPE_INT, 48000,
+                "channels", G_TYPE_INT, 2, NULL), NULL);
   }
 
   /* create audio caps element */
@@ -376,12 +398,11 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
   if (priv->audio_codec == GST_WFD_AUDIO_LPCM) {
     g_object_set (G_OBJECT (acaps), "caps",
         gst_caps_new_simple ("audio/x-lpcm", "width", G_TYPE_INT, 16,
-            /* In case of LPCM, uses big endian */
-            "endianness", G_TYPE_INT, 4321,
-            "signed", G_TYPE_BOOLEAN, TRUE,
-            "depth", G_TYPE_INT, 16,
-            "rate", G_TYPE_INT, freq,
-            "channels", G_TYPE_INT, channels, NULL), NULL);
+            "rate", G_TYPE_INT, 48000,
+            "channels", G_TYPE_INT, 2,
+            "dynamic_range", G_TYPE_INT, 0,
+            "emphasis", G_TYPE_BOOLEAN, FALSE,
+            "mute", G_TYPE_BOOLEAN, FALSE, NULL), NULL);
   } else if ((priv->audio_codec == GST_WFD_AUDIO_AAC)
       || (priv->audio_codec == GST_WFD_AUDIO_AC3)) {
     g_object_set (G_OBJECT (acaps), "caps", gst_caps_new_simple ("audio/x-raw",
@@ -435,9 +456,9 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
       goto create_error;
     }
 
-    gst_bin_add_many (srcbin, audiosrc, audio_convert, acaps, aqueue, NULL);
+    gst_bin_add_many (srcbin, audiosrc, acaps2, audio_convert, acaps, aqueue, NULL);
 
-    if (!gst_element_link_many (audiosrc, audio_convert, acaps, aqueue, NULL)) {
+    if (!gst_element_link_many (audiosrc, acaps2, audio_convert, acaps, aqueue, NULL)) {
       GST_ERROR_OBJECT (factory, "Failed to link audio src elements...");
       goto create_error;
     }
