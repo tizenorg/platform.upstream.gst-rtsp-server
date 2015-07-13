@@ -69,12 +69,6 @@
 #define FREE_STRING(field)              g_free (field); (field) = NULL
 #define REPLACE_STRING(field, val)      FREE_STRING(field); (field) = g_strdup (val)
 
-static void
-free_string (gchar ** str)
-{
-  FREE_STRING (*str);
-}
-
 #define INIT_ARRAY(field, type, init_func)              \
 G_STMT_START {                                          \
   if (field) {                                          \
@@ -675,7 +669,8 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
             msg->uibc_capability->input_category_list.input_cat |=
                 GST_WFD_UIBC_INPUT_CAT_UNKNOWN;
         } while (read_len < rem_len);
-        v = strstr (v, "generic_cap_list");
+
+        if ((v = strstr (v, "generic_cap_list"))) {
         WFD_READ_CHAR_END_STRING (tstring, '=');
         if (!g_strcmp0 (tstring, "generic_cap_list")) {
           gchar temp[8192];
@@ -715,7 +710,9 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
                   GST_WFD_UIBC_INPUT_TYPE_UNKNOWN;
           } while (read_len < rem_len);
         }
-        v = strstr (v, "hidc_cap_list");
+        }
+
+        if ((v = strstr (v, "hidc_cap_list"))) {
         WFD_SKIP_SPACE (v);
         WFD_READ_CHAR_END_STRING (tstring, '=');
         if (!g_strcmp0 (tstring, "hidc_cap_list")) {
@@ -773,14 +770,18 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
             }
           } while (read_len < rem_len);
         }
+        }
+
         if (strstr (v, "port")) {
           v = strstr (v, "port");
-          WFD_READ_CHAR_END_STRING (tstring, '=');
-          if (!g_strcmp0 (tstring, "port")) {
-            WFD_SKIP_EQUAL (v);
-            WFD_READ_CHAR_END_STRING (tstring, ';');
-            if (!strstr (tstring, "none")) {
-              msg->uibc_capability->tcp_port = strtoul (tstring, NULL, 10);
+          if (v) {
+            WFD_READ_CHAR_END_STRING (tstring, '=');
+            if (!g_strcmp0 (tstring, "port")) {
+              WFD_SKIP_EQUAL (v);
+              WFD_READ_CHAR_END_STRING (tstring, ';');
+              if (!strstr (tstring, "none")) {
+                msg->uibc_capability->tcp_port = strtoul (tstring, NULL, 10);
+              }
             }
           }
         }

@@ -103,7 +103,7 @@ int main (int argc, char *argv[])
       "( " VIDEO_PIPELINE " )");
   g_object_ref (factory);
   gst_rtsp_mount_points_add_factory (mounts, TEST_MOUNT_POINT, GST_RTSP_MEDIA_FACTORY(factory));
-  g_object_unref (mounts);
+  if (mounts) g_object_unref (mounts);
 
   /* attach the server to the default maincontext */
   if ((id = gst_rtsp_server_attach (GST_RTSP_SERVER_CAST(server), NULL)) == 0)

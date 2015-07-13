@@ -118,6 +118,8 @@ gst_rtsp_wfd_server_init (GstRTSPWFDServer * server)
 {
   GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE (server);
 
+  g_return_if_fail (priv != NULL);
+
   server->priv = priv;
   server->priv->native_resolution = 0;
   server->priv->supported_resolution = 1;
@@ -204,6 +206,8 @@ create_client_wfd (GstRTSPServer * server)
   GstRTSPAuth *auth = NULL;
   GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE(server);
 
+  g_return_val_if_fail (priv != NULL, NULL);
+
   GST_INFO_OBJECT (server, "New Client is being created");
 
   /* a new client connected, create a session to handle the client. */
@@ -276,6 +280,7 @@ gst_rtsp_wfd_server_set_supported_reso(GstRTSPWFDServer *server, guint64 support
   GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE(server);
 
   g_return_val_if_fail (GST_IS_RTSP_WFD_SERVER (server), GST_RTSP_ERROR);
+  g_return_val_if_fail (priv != NULL, GST_RTSP_ERROR);
 
   GST_RTSP_WFD_SERVER_LOCK (server);
 
@@ -284,18 +289,37 @@ gst_rtsp_wfd_server_set_supported_reso(GstRTSPWFDServer *server, guint64 support
   GST_RTSP_WFD_SERVER_UNLOCK (server);
   return res;
 }
+
 GstRTSPResult
 gst_rtsp_wfd_server_set_video_native_reso (GstRTSPWFDServer *server, guint64 native_reso)
 {
-	  GstRTSPResult res = GST_RTSP_OK;
-	  GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE(server);
+  GstRTSPResult res = GST_RTSP_OK;
+  GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE(server);
 
-	  g_return_val_if_fail (GST_IS_RTSP_WFD_SERVER (server), GST_RTSP_ERROR);
+  g_return_val_if_fail (GST_IS_RTSP_WFD_SERVER (server), GST_RTSP_ERROR);
+  g_return_val_if_fail (priv != NULL, GST_RTSP_ERROR);
 
-	  GST_RTSP_WFD_SERVER_LOCK (server);
+  GST_RTSP_WFD_SERVER_LOCK (server);
 
-	  priv->native_resolution = native_reso;
+  priv->native_resolution = native_reso;
 
-	  GST_RTSP_WFD_SERVER_UNLOCK (server);
-	  return res;
+  GST_RTSP_WFD_SERVER_UNLOCK (server);
+  return res;
+}
+
+GstRTSPResult
+gst_rtsp_wfd_server_set_audio_codec (GstRTSPWFDServer *server, guint8 audio_codec)
+{
+  GstRTSPResult res = GST_RTSP_OK;
+  GstRTSPWFDServerPrivate *priv = GST_RTSP_WFD_SERVER_GET_PRIVATE(server);
+
+  g_return_val_if_fail (GST_IS_RTSP_WFD_SERVER (server), GST_RTSP_ERROR);
+  g_return_val_if_fail (priv != NULL, GST_RTSP_ERROR);
+
+  GST_RTSP_WFD_SERVER_LOCK (server);
+
+  priv->audio_codec = audio_codec;
+
+  GST_RTSP_WFD_SERVER_UNLOCK (server);
+  return res;
 }

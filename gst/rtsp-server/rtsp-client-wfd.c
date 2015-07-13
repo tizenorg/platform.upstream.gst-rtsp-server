@@ -228,10 +228,13 @@ gst_rtsp_wfd_client_init (GstRTSPWFDClient * client)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
 
+  g_return_if_fail (priv != NULL);
+
   client->priv = priv;
   priv->protection_enabled = FALSE;
   priv->video_native_resolution = GST_WFD_VIDEO_CEA_RESOLUTION;
   priv->video_resolution_supported = GST_WFD_CEA_640x480P60;
+  priv->keep_alive_flag = FALSE;
   g_mutex_init (&priv->keep_alive_lock);
   GST_INFO_OBJECT (client, "Client is initialized");
 }
@@ -242,6 +245,9 @@ gst_rtsp_wfd_client_finalize (GObject * obj)
 {
   GstRTSPWFDClient *client = GST_RTSP_WFD_CLIENT (obj);
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_if_fail (GST_IS_RTSP_WFD_CLIENT (obj));
+  g_return_if_fail (priv != NULL);
 
   GST_INFO ("finalize client %p", client);
 
@@ -323,6 +329,9 @@ wfd_get_param_request_done (GstRTSPWFDClient * client)
 {
   GstRTSPResult res = GST_RTSP_OK;
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_if_fail (priv != NULL);
+
   priv->m3_done = TRUE;
   GST_INFO_OBJECT (client, "M3 done..");
 
@@ -729,7 +738,9 @@ wfd_get_prefered_resolution (guint64 srcResolution,
           break;
       }
     }
-      break;
+    break;
+
+    default:
       *cMaxWidth = 0;
       *cMaxHeight = 0;
       *cFramerate = 0;
@@ -766,12 +777,19 @@ handle_wfd_response (GstRTSPClient * client, GstRTSPContext * ctx)
   GstRTSPWFDClient *_client = GST_RTSP_WFD_CLIENT (client);
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
 
+  g_return_if_fail (priv != NULL);
+
   GST_INFO_OBJECT (_client, "Handling response..");
 
-  if (!ctx)
+  if (!ctx) {
     GST_ERROR_OBJECT (_client, "Context is NULL");
-  if (!ctx->response)
+    goto error;
+  }
+
+  if (!ctx->response) {
     GST_ERROR_OBJECT (_client, "Response is NULL");
+    goto error;
+  }
 
   /* parsing the GET_PARAMTER response */
   res = gst_rtsp_message_get_body (ctx->response, (guint8 **) & data, &size);
@@ -1030,9 +1048,11 @@ handle_wfd_set_param_request (GstRTSPClient * client, GstRTSPContext * ctx)
       GST_INFO_OBJECT (_client, "SET_PARAMETER Request : %s(%d)", data, size);
       if (g_strcmp0 ((const gchar *) data, "wfd_idr_request"))
         send_generic_wfd_response (_client, GST_RTSP_STS_OK, ctx);
+#if 0
       else
         /* TODO-WFD : Handle other set param request */
         send_generic_wfd_response (_client, GST_RTSP_STS_OK, ctx);
+#endif
     } else {
       goto bad_request;
     }
@@ -1209,9 +1229,13 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
   GString *buf = NULL;
   GstWFDMessage *msg = NULL;
   GstWFDResult wfd_res = GST_WFD_EINVAL;
-  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  GstRTSPWFDClientPrivate *priv = NULL;
+  priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_if_fail (priv != NULL);
 
   buf = g_string_new ("");
+  g_return_if_fail (buf != NULL);
 
   if (msg_type == M3_REQ_MSG) {
     /* create M3 request to be sent */
@@ -2079,6 +2103,9 @@ gst_rtsp_wfd_client_set_video_supported_resolution (GstRTSPWFDClient * client,
 {
   GstRTSPResult res = GST_RTSP_OK;
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_val_if_fail (priv != NULL, GST_RTSP_EINVAL);
+
   priv->video_resolution_supported = supported_reso;
   GST_DEBUG ("Resolution : %"G_GUINT64_FORMAT, supported_reso);
 
@@ -2091,6 +2118,9 @@ gst_rtsp_wfd_client_set_video_native_resolution (GstRTSPWFDClient * client,
 {
   GstRTSPResult res = GST_RTSP_OK;
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_val_if_fail (priv != NULL, GST_RTSP_EINVAL);
+
   priv->video_native_resolution = native_reso;
   GST_DEBUG ("Native Resolution : %"G_GUINT64_FORMAT, native_reso);
 
@@ -2101,11 +2131,14 @@ static gboolean
 wfd_ckeck_keep_alive_response (gpointer userdata)
 {
   GstRTSPWFDClient *client = (GstRTSPWFDClient *)userdata;
-  GstRTSPWFDClientPrivate *priv;
+  GstRTSPWFDClientPrivate *priv = NULL;
   if (!client) {
     return FALSE;
   }
+
   priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_val_if_fail (priv != NULL, GST_RTSP_EINVAL);
+
   if (priv->keep_alive_flag) {
     return FALSE;
   }
@@ -2151,6 +2184,8 @@ keep_alive_condition(gpointer userdata)
     return FALSE;
   }
   priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_val_if_fail (priv != NULL, FALSE);
 
   g_mutex_lock(&priv->keep_alive_lock);
   if(!priv->keep_alive_flag) {

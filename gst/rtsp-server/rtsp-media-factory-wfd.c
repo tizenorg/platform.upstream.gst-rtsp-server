@@ -283,8 +283,10 @@ rtsp_media_wfd_dump_data (GstPad * pad, GstPadProbeInfo *info, gpointer u_data)
     size = gst_buffer_get_size (buffer);
 
     f = fopen ("/root/probe.ts", "a");
-    fwrite (data, size, 1, f);
-    fclose (f);
+    if (f != NULL) {
+      fwrite (data, size, 1, f);
+      fclose (f);
+    }
     gst_buffer_unmap (buffer, &mapinfo);
   }
 
