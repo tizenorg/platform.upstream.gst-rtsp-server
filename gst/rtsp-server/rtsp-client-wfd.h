@@ -128,6 +128,8 @@ GstRTSPResult         gst_rtsp_wfd_client_set_video_supported_resolution (
                           GstRTSPWFDClient * client, guint64 supported_reso);
 GstRTSPResult         gst_rtsp_wfd_client_set_video_native_resolution (
 		                      GstRTSPWFDClient * client, guint64 native_reso);
+GstRTSPResult         gst_rtsp_wfd_client_set_audio_codec (
+		                      GstRTSPWFDClient * client, guint8 audio_codec);
 /**
  * GstRTSPWFDClientSessionFilterFunc:
  * @client: a #GstRTSPWFDClient object

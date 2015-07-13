@@ -196,6 +196,14 @@ void gst_rtsp_media_factory_wfd_set_negotiated_resolution (GstRTSPMediaFactory *
   priv->video_width = width;
   priv->video_height = height;
 }
+void gst_rtsp_media_factory_wfd_set_audio_codec (GstRTSPMediaFactory *factory,
+   guint audio_codec)
+{
+  GstRTSPMediaFactoryWFD *factory_wfd = GST_RTSP_MEDIA_FACTORY_WFD (factory);
+  GstRTSPMediaFactoryWFDPrivate *priv = factory_wfd->priv;
+
+  priv->audio_codec = audio_codec;
+}
 
 static void
 gst_rtsp_media_factory_wfd_init (GstRTSPMediaFactoryWFD * factory)

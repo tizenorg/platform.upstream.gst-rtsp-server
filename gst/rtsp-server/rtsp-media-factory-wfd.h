@@ -123,6 +123,8 @@ void  gst_rtsp_media_factory_wfd_set_dump_ts (GstRTSPMediaFactoryWFD * factory,
     gboolean dump_ts);
 void gst_rtsp_media_factory_wfd_set_negotiated_resolution (GstRTSPMediaFactory *factory,
    guint32 width, guint32 height);
+void gst_rtsp_media_factory_wfd_set_audio_codec (GstRTSPMediaFactory *factory,
+    guint audio_codec);
 
 G_END_DECLS
 #endif /* __GST_RTSP_MEDIA_FACTORY_WFD_H__ */
