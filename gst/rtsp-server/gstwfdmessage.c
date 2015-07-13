@@ -237,7 +237,118 @@ gst_wfd_message_uninit (GstWFDMessage * msg)
 {
   g_return_val_if_fail (msg != NULL, GST_WFD_EINVAL);
 
-  gst_wfd_message_init (msg);
+  if (msg->audio_codecs) {
+    guint i = 0;
+    if (msg->audio_codecs->list) {
+      for (; i < msg->audio_codecs->count; i++) {
+        FREE_STRING(msg->audio_codecs->list[i].audio_format);
+        msg->audio_codecs->list[i].modes = 0;
+        msg->audio_codecs->list[i].latency = 0;
+      }
+      FREE_STRING(msg->audio_codecs->list);
+    }
+    FREE_STRING(msg->audio_codecs);
+  }
+
+  if (msg->video_formats) {
+    FREE_STRING(msg->video_formats->list);
+    FREE_STRING(msg->video_formats);
+  }
+
+  if (msg->video_3d_formats) {
+    FREE_STRING(msg->video_3d_formats->list);
+    FREE_STRING(msg->video_3d_formats);
+  }
+
+  if (msg->content_protection) {
+    if (msg->content_protection->hdcp2_spec) {
+      FREE_STRING(msg->content_protection->hdcp2_spec->hdcpversion);
+      FREE_STRING(msg->content_protection->hdcp2_spec->TCPPort);
+      FREE_STRING(msg->content_protection->hdcp2_spec);
+    }
+    FREE_STRING(msg->content_protection);
+  }
+
+  if (msg->display_edid) {
+    if (msg->display_edid->edid_payload)
+      FREE_STRING(msg->display_edid->edid_payload);
+    FREE_STRING(msg->display_edid);
+  }
+
+  if (msg->coupled_sink) {
+    if (msg->coupled_sink->coupled_sink_cap) {
+      FREE_STRING(msg->coupled_sink->coupled_sink_cap->sink_address);
+      FREE_STRING(msg->coupled_sink->coupled_sink_cap);
+    }
+    FREE_STRING(msg->coupled_sink);
+  }
+
+  if (msg->trigger_method) {
+    FREE_STRING(msg->trigger_method->wfd_trigger_method);
+    FREE_STRING(msg->trigger_method);
+  }
+
+  if (msg->presentation_url) {
+    FREE_STRING(msg->presentation_url->wfd_url0);
+    FREE_STRING(msg->presentation_url->wfd_url1);
+    FREE_STRING(msg->presentation_url);
+  }
+
+  if (msg->client_rtp_ports) {
+    FREE_STRING(msg->client_rtp_ports->profile);
+    FREE_STRING(msg->client_rtp_ports->mode);
+    FREE_STRING(msg->client_rtp_ports);
+  }
+
+  if (msg->route) {
+    FREE_STRING(msg->route->destination);
+    FREE_STRING(msg->route);
+  }
+
+  if (msg->I2C) {
+    FREE_STRING(msg->I2C);
+  }
+
+  if (msg->av_format_change_timing) {
+    FREE_STRING(msg->av_format_change_timing);
+  }
+
+  if (msg->preferred_display_mode) {
+    FREE_STRING(msg->preferred_display_mode);
+  }
+
+  if (msg->uibc_capability) {
+    if (msg->uibc_capability->hidc_cap_list.next) {
+      detailed_cap *list = msg->uibc_capability->hidc_cap_list.next;
+      detailed_cap *temp = NULL;
+      while (list) {
+        temp = list->next;
+        FREE_STRING(list);
+        list = temp;
+      }
+    }
+    FREE_STRING(msg->uibc_capability);
+  }
+
+  if (msg->uibc_setting) {
+    FREE_STRING(msg->uibc_setting);
+  }
+
+  if (msg->standby_resume_capability) {
+    FREE_STRING(msg->standby_resume_capability);
+  }
+
+  if (msg->standby) {
+    FREE_STRING(msg->standby);
+  }
+
+  if (msg->connector_type) {
+    FREE_STRING(msg->connector_type);
+  }
+
+  if (msg->idr_request) {
+    FREE_STRING(msg->idr_request);
+  }
 
   return GST_WFD_OK;
 }
