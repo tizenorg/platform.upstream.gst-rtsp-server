@@ -156,7 +156,7 @@ void  gst_rtsp_media_factory_wfd_set (GstRTSPMediaFactoryWFD * factory,
   factory->priv = priv;
 
   priv->videosrc_type = videosrc_type;
-  priv->audio_device= audio_device;
+  priv->audio_device = audio_device;
   priv->audio_latency_time = audio_latency_time;
   priv->audio_buffer_time = audio_buffer_time;
   priv->audio_do_timestamp = audio_do_timestamp;
@@ -460,6 +460,7 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
   GstElement *venc_caps = NULL;
   gchar *vcodec = NULL;
   GstElement *venc = NULL;
+  GstElement *vparse = NULL;
   GstElement *vqueue = NULL;
   GstRTSPMediaFactoryWFDPrivate *priv = NULL;
 
@@ -517,14 +518,21 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
       gst_caps_new_simple ("video/x-h264",
           "profile", G_TYPE_STRING, "baseline", NULL), NULL);
 
+  vparse = gst_element_factory_make ("h264parse", "videoparse");
+  if (NULL == vparse) {
+    GST_ERROR_OBJECT (factory, "failed to create h264 parse element");
+    goto create_error;
+  }
+  g_object_set (vparse, "config-interval", 1, NULL);
+
   vqueue = gst_element_factory_make ("queue", "video-queue");
   if (!vqueue) {
     GST_ERROR_OBJECT (factory, "failed to create video queue element");
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, venc_caps, vqueue, NULL);
-  if (!gst_element_link_many (videosrc, vcaps, venc, venc_caps, vqueue, NULL)) {
+  gst_bin_add_many (srcbin, videosrc, vcaps, venc, venc_caps, vparse, vqueue, NULL);
+  if (!gst_element_link_many (videosrc, vcaps, venc, venc_caps, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
   }
@@ -544,6 +552,7 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
   GstElement *videosrc = NULL;
   GstElement *vcaps = NULL;
   GstElement *venc = NULL;
+  GstElement *vparse = NULL;
   GstElement *vqueue = NULL;
   gchar *vcodec = NULL;
   GstRTSPMediaFactoryWFDPrivate *priv = NULL;
@@ -589,15 +598,22 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
   g_object_set (venc, "byte-stream", 1, NULL);
   g_object_set (venc, "append-dci", 1, NULL);
 
+  vparse = gst_element_factory_make ("h264parse", "videoparse");
+  if (NULL == vparse) {
+    GST_ERROR_OBJECT (factory, "failed to create h264 parse element");
+    goto create_error;
+  }
+  g_object_set (vparse, "config-interval", 1, NULL);
+
   vqueue = gst_element_factory_make ("queue", "video-queue");
   if (!vqueue) {
     GST_ERROR_OBJECT (factory, "failed to create video queue element");
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vqueue, NULL);
+  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
 
-  if (!gst_element_link_many (videosrc, vcaps, venc, vqueue, NULL)) {
+  if (!gst_element_link_many (videosrc, vcaps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
   }
@@ -620,6 +636,7 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
   GstElement *videoconvert = NULL, *videoscale = NULL;
   gchar *vcodec = NULL;
   GstElement *venc = NULL;
+  GstElement *vparse = NULL;
   GstElement *vqueue = NULL;
   GstRTSPMediaFactoryWFDPrivate *priv = NULL;
 
@@ -689,6 +706,13 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
       gst_caps_new_simple ("video/x-h264",
           "profile", G_TYPE_STRING, "baseline", NULL), NULL);
 
+  vparse = gst_element_factory_make ("h264parse", "videoparse");
+  if (NULL == vparse) {
+    GST_ERROR_OBJECT (factory, "failed to create h264 parse element");
+    goto create_error;
+  }
+  g_object_set (vparse, "config-interval", 1, NULL);
+
   vqueue = gst_element_factory_make ("queue", "video-queue");
   if (!vqueue) {
     GST_ERROR_OBJECT (factory, "failed to create video queue element");
@@ -696,9 +720,9 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
   }
 
   gst_bin_add_many (srcbin, videosrc, videoscale, videoconvert, vcaps, venc,
-      venc_caps, vqueue, NULL);
+      venc_caps, vparse, vqueue, NULL);
   if (!gst_element_link_many (videosrc, videoscale, videoconvert, vcaps, venc,
-          venc_caps, vqueue, NULL)) {
+          venc_caps, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
   }
