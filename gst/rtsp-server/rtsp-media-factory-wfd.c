@@ -833,7 +833,6 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
     goto create_error;
   }
-  if (vcodec) g_free (vcodec);
 
   venc = gst_element_factory_make (vcodec, "videoenc");
   if (!venc) {
@@ -866,10 +865,12 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
   }
 
   priv->video_queue = vqueue;
+  if (vcodec) g_free (vcodec);
 
   return TRUE;
 
 create_error:
+  if (vcodec) g_free (vcodec);
   return FALSE;
 }
 
