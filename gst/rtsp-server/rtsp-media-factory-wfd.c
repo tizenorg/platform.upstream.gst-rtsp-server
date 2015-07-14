@@ -498,10 +498,12 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
   }
 
   priv->audio_queue = aqueue;
+  if (acodec) g_free (acodec);
 
   return TRUE;
 
 create_error:
+  if (acodec) g_free (acodec);
   return FALSE;
 }
 
@@ -546,12 +548,11 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
     vcodec = g_strdup (priv->video_encoder);
   else {
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
-    g_free (vcodec);
     goto create_error;
   }
 
   venc = gst_element_factory_make (vcodec, "videoenc");
-  g_free (vcodec);
+  if (vcodec) g_free (vcodec);
 
   if (!venc) {
     GST_ERROR_OBJECT (factory, "failed to create video encoder element");
@@ -647,6 +648,7 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
     GST_ERROR_OBJECT (factory, "failed to create video encoder element");
     goto create_error;
   }
+  if (vcodec) g_free (vcodec);
 
   g_object_set (venc, "bitrate", priv->video_bitrate, NULL);
   g_object_set (venc, "byte-stream", 1, NULL);
@@ -734,12 +736,11 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
     vcodec = g_strdup (priv->video_encoder);
   else {
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
-    g_free (vcodec);
     goto create_error;
   }
 
   venc = gst_element_factory_make (vcodec, "videoenc");
-  g_free (vcodec);
+  if (vcodec) g_free (vcodec);
 
   if (!venc) {
     GST_ERROR_OBJECT (factory, "failed to create video encoder element");
@@ -832,6 +833,7 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
     GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
     goto create_error;
   }
+  if (vcodec) g_free (vcodec);
 
   venc = gst_element_factory_make (vcodec, "videoenc");
   if (!venc) {

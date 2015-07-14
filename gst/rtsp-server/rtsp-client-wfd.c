@@ -258,6 +258,8 @@ gst_rtsp_wfd_client_finalize (GObject * obj)
 
   GST_INFO ("finalize client %p", client);
 
+  if (priv->host_address)
+    g_free (priv->host_address);
   g_mutex_clear (&priv->keep_alive_lock);
   G_OBJECT_CLASS (gst_rtsp_wfd_client_parent_class)->finalize (obj);
 }
@@ -1425,7 +1427,7 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
       g_string_append (buf, priv->host_address);
     } else {
       GST_ERROR_OBJECT (client, "Failed to get host address");
-      if (buf) g_string_free (buf, FALSE);
+      if (buf) g_string_free (buf, TRUE);
       goto error;
     }
 
