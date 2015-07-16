@@ -1228,9 +1228,9 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   if (msg->av_format_change_timing) {
     g_string_append_printf (lines, "wfd_av_format_change_timing");
     g_string_append_printf (lines, ":");
-    g_string_append_printf (lines, " %10"G_GUINT64_FORMAT,
+    g_string_append_printf (lines, " %010llx",
         msg->av_format_change_timing->PTS);
-    g_string_append_printf (lines, " %10"G_GUINT64_FORMAT,
+    g_string_append_printf (lines, " %010llx",
         msg->av_format_change_timing->DTS);
     g_string_append_printf (lines, "\r\n");
   }
@@ -1239,7 +1239,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
     g_string_append_printf (lines, "wfd_preferred_display_mode");
     g_string_append_printf (lines, ":");
     if (msg->preferred_display_mode->displaymodesupported) {
-      g_string_append_printf (lines, " %06"G_GUINT64_FORMAT,
+      g_string_append_printf (lines, " %06llx",
           msg->preferred_display_mode->p_clock);
       g_string_append_printf (lines, " %04x", msg->preferred_display_mode->H);
       g_string_append_printf (lines, " %04x", msg->preferred_display_mode->HB);
@@ -2377,5 +2377,33 @@ gst_wfd_message_get_presentation_url (GstWFDMessage * msg, gchar ** wfd_url0,
     *wfd_url0 = g_strdup (msg->presentation_url->wfd_url0);
     *wfd_url1 = g_strdup (msg->presentation_url->wfd_url1);
   }
+  return GST_WFD_OK;
+}
+
+GstWFDResult
+gst_wfd_message_set_av_format_change_timing(GstWFDMessage *msg, guint64 PTS, guint64 DTS)
+{
+  g_return_val_if_fail(msg != NULL, GST_WFD_EINVAL);
+
+  if (!msg->av_format_change_timing)
+    msg->av_format_change_timing = g_new0(GstWFDAVFormatChangeTiming, 1);
+
+  msg->av_format_change_timing->PTS = PTS;
+  msg->av_format_change_timing->DTS = DTS;
+  return GST_WFD_OK;
+}
+
+GstWFDResult
+gst_wfd_message_get_av_format_change_timing(GstWFDMessage *msg, guint64 *PTS, guint64 *DTS)
+{
+  g_return_val_if_fail(msg != NULL, GST_WFD_EINVAL);
+  g_return_val_if_fail(PTS != NULL, GST_WFD_EINVAL);
+  g_return_val_if_fail(DTS != NULL, GST_WFD_EINVAL);
+
+  if (msg->av_format_change_timing) {
+    *PTS = msg->av_format_change_timing->PTS;
+    *DTS = msg->av_format_change_timing->DTS;
+  }
+
   return GST_WFD_OK;
 }

@@ -655,6 +655,13 @@ GstWFDResult gst_wfd_message_set_presentation_url(GstWFDMessage *msg,
 GstWFDResult gst_wfd_message_get_presentation_url(GstWFDMessage *msg, gchar **wfd_url0,
                                         gchar **wfd_url1);
 
+GstWFDResult gst_wfd_message_set_av_format_change_timing(GstWFDMessage *msg,
+                                        guint64 PTS,
+                                        guint64 DTS);
+
+GstWFDResult gst_wfd_message_get_av_format_change_timing(GstWFDMessage *msg,
+                                        guint64 *PTS,
+                                        guint64 *DTS);
 G_END_DECLS
 
 #endif /* __GST_WFD_MESSAGE_H__ */
