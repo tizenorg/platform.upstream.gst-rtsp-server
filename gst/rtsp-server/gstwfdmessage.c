@@ -881,9 +881,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
             }
           } while (read_len < rem_len);
         }
-        }
 
-        if (strstr (v, "port")) {
           v = strstr (v, "port");
           if (v) {
             WFD_READ_CHAR_END_STRING (tstring, '=');
@@ -896,6 +894,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
             }
           }
         }
+
       }
     } else if (strstr (v, "none")) {
       msg->uibc_capability->uibcsupported = FALSE;
