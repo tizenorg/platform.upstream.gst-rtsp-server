@@ -481,7 +481,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
   _read_string_attr_and_value (attr, value, sizeof (attr), sizeof (value), ':',
       p);
 
-  if (!g_strcmp0 (attr, "wfd_audio_codecs")) {
+  if (!g_strcmp0 (attr, GST_STRING_WFD_AUDIO_CODECS)) {
     msg->audio_codecs = g_new0 (GstWFDAudioCodeclist, 1);
     if (strlen (v)) {
       guint i = 0;
@@ -498,7 +498,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
         WFD_SKIP_COMMA (v);
       }
     }
-  } else if (!g_strcmp0 (attr, "wfd_video_formats")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_VIDEO_FORMATS)) {
     msg->video_formats = g_new0 (GstWFDVideoCodeclist, 1);
     if (strlen (v)) {
       msg->video_formats->count = 1;
@@ -541,7 +541,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
         WFD_SKIP_SPACE (v);
       }
     }
-  } else if (!g_strcmp0 (attr, "wfd_3d_formats")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_3D_VIDEO_FORMATS)) {
     msg->video_3d_formats = g_new0 (GstWFD3DFormats, 1);
     if (strlen (v)) {
       msg->video_3d_formats->count = 1;
@@ -578,7 +578,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
         WFD_SKIP_SPACE (v);
       }
     }
-  } else if (!g_strcmp0 (attr, "wfd_content_protection")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_CONTENT_PROTECTION)) {
     msg->content_protection = g_new0 (GstWFDContentProtection, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -591,7 +591,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
         WFD_READ_STRING (msg->content_protection->hdcp2_spec->TCPPort);
       }
     }
-  } else if (!g_strcmp0 (attr, "wfd_display_edid")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_DISPLAY_EDID)) {
     msg->display_edid = g_new0 (GstWFDDisplayEdid, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -634,7 +634,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
           v += strlen (v);
       }
     }
-  } else if (!g_strcmp0 (attr, "wfd_coupled_sink")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_COUPLED_SINK)) {
     msg->coupled_sink = g_new0 (GstWFDCoupledSink, 1);
     if (strlen (v)) {
       msg->coupled_sink->coupled_sink_cap = g_new0 (GstWFDCoupled_sink_cap, 1);
@@ -643,13 +643,13 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       WFD_SKIP_SPACE (v);
       WFD_READ_STRING (msg->coupled_sink->coupled_sink_cap->sink_address);
     }
-  } else if (!g_strcmp0 (attr, "wfd_trigger_method")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_TRIGGER_METHOD)) {
     msg->trigger_method = g_new0 (GstWFDTriggerMethod, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
       WFD_READ_STRING (msg->trigger_method->wfd_trigger_method);
     }
-  } else if (!g_strcmp0 (attr, "wfd_presentation_URL")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_PRESENTATION_URL)) {
     msg->presentation_url = g_new0 (GstWFDPresentationUrl, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -657,7 +657,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       WFD_SKIP_SPACE (v);
       WFD_READ_STRING (msg->presentation_url->wfd_url1);
     }
-  } else if (!g_strcmp0 (attr, "wfd_client_rtp_ports")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_CLIENT_RTP_PORTS)) {
     msg->client_rtp_ports = g_new0 (GstWFDClientRtpPorts, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -669,13 +669,13 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       WFD_SKIP_SPACE (v);
       WFD_READ_STRING (msg->client_rtp_ports->mode);
     }
-  } else if (!g_strcmp0 (attr, "wfd_route")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_ROUTE)) {
     msg->route = g_new0 (GstWFDRoute, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
       WFD_READ_STRING (msg->route->destination);
     }
-  } else if (!g_strcmp0 (attr, "wfd_I2C")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_I2C)) {
     msg->I2C = g_new0 (GstWFDI2C, 1);
     if (strlen (v)) {
       msg->I2C->I2CPresent = TRUE;
@@ -684,7 +684,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       if (msg->I2C->I2C_port)
         msg->I2C->I2CPresent = TRUE;
     }
-  } else if (!g_strcmp0 (attr, "wfd_av_format_change_timing")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_AV_FORMAT_CHANGE_TIMING)) {
     msg->av_format_change_timing = g_new0 (GstWFDAVFormatChangeTiming, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -692,7 +692,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       WFD_SKIP_SPACE (v);
       WFD_READ_UINT32 (msg->av_format_change_timing->DTS);
     }
-  } else if (!g_strcmp0 (attr, "wfd_preferred_display_mode")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_PREFERRED_DISPLAY_MODE)) {
     msg->preferred_display_mode = g_new0 (GstWFDPreferredDisplayMode, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -754,7 +754,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
         WFD_SKIP_SPACE (v);
       }
     }
-  } else if (!g_strcmp0 (attr, "wfd_uibc_capability")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_UIBC_CAPABILITY)) {
     msg->uibc_capability = g_new0 (GstWFDUibcCapability, 1);
     if (strstr (v, "input_category_list")) {
       gchar *tstring = NULL;
@@ -899,7 +899,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
     } else if (strstr (v, "none")) {
       msg->uibc_capability->uibcsupported = FALSE;
     }
-  } else if (!g_strcmp0 (attr, "wfd_uibc_setting")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_UIBC_SETTING)) {
     msg->uibc_setting = g_new0 (GstWFDUibcSetting, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -908,7 +908,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       else
         msg->uibc_setting->uibc_setting = FALSE;
     }
-  } else if (!g_strcmp0 (attr, "wfd_standby_resume_capability")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_STANDBY_RESUME_CAPABILITY)) {
     msg->standby_resume_capability = g_new0 (GstWFDStandbyResumeCapability, 1);
     if (strlen (v)) {
       WFD_SKIP_SPACE (v);
@@ -917,17 +917,17 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
       else
         msg->standby_resume_capability->standby_resume_cap = FALSE;
     }
-  } else if (!g_strcmp0 (attr, "wfd_standby")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_STANDBY)) {
     msg->standby = g_new0 (GstWFDStandby, 1);
     msg->standby->wfd_standby = TRUE;
-  } else if (!g_strcmp0 (attr, "wfd_connector_type")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_CONNECTOR_TYPE)) {
     msg->connector_type = g_new0 (GstWFDConnectorType, 1);
     if (strlen (v)) {
       msg->connector_type->supported = TRUE;
       WFD_SKIP_SPACE (v);
       WFD_READ_UINT32 (msg->connector_type->connector_type);
     }
-  } else if (!g_strcmp0 (attr, "wfd_idr_request")) {
+  } else if (!g_strcmp0 (attr, GST_STRING_WFD_IDR_REQUEST)) {
     msg->idr_request = g_new0 (GstWFDIdrRequest, 1);
     msg->idr_request->idr_request = TRUE;
   }
@@ -1021,7 +1021,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
 
   /* list of audio codecs */
   if (msg->audio_codecs) {
-    g_string_append_printf (lines, "wfd_audio_codecs");
+    g_string_append_printf (lines, GST_STRING_WFD_AUDIO_CODECS);
     if (msg->audio_codecs->list) {
       g_string_append_printf (lines, ":");
       for (i = 0; i < msg->audio_codecs->count; i++) {
@@ -1040,7 +1040,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
 
   /* list of video codecs */
   if (msg->video_formats) {
-    g_string_append_printf (lines, "wfd_video_formats");
+    g_string_append_printf (lines, GST_STRING_WFD_VIDEO_FORMATS);
     if (msg->video_formats->list) {
       g_string_append_printf (lines, ":");
       g_string_append_printf (lines, " %02x", msg->video_formats->list->native);
@@ -1083,7 +1083,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
 
   /* list of video 3D codecs */
   if (msg->video_3d_formats) {
-    g_string_append_printf (lines, "wfd_3d_video_formats");
+    g_string_append_printf (lines, GST_STRING_WFD_3D_VIDEO_FORMATS);
     g_string_append_printf (lines, ":");
     if (msg->video_3d_formats->list) {
       g_string_append_printf (lines, " %02x",
@@ -1123,7 +1123,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->content_protection) {
-    g_string_append_printf (lines, "wfd_content_protection");
+    g_string_append_printf (lines, GST_STRING_WFD_CONTENT_PROTECTION);
     g_string_append_printf (lines, ":");
     if (msg->content_protection->hdcp2_spec) {
       if (msg->content_protection->hdcp2_spec->hdcpversion) {
@@ -1141,7 +1141,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->display_edid) {
-    g_string_append_printf (lines, "wfd_display_edid");
+    g_string_append_printf (lines, GST_STRING_WFD_DISPLAY_EDID);
     g_string_append_printf (lines, ":");
     if (msg->display_edid->edid_supported) {
       g_string_append_printf (lines, " %d", msg->display_edid->edid_supported);
@@ -1157,7 +1157,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->coupled_sink) {
-    g_string_append_printf (lines, "wfd_coupled_sink");
+    g_string_append_printf (lines, GST_STRING_WFD_COUPLED_SINK);
     g_string_append_printf (lines, ":");
     if (msg->coupled_sink->coupled_sink_cap) {
       g_string_append_printf (lines, " %02x",
@@ -1174,7 +1174,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->trigger_method) {
-    g_string_append_printf (lines, "wfd_trigger_method");
+    g_string_append_printf (lines, GST_STRING_WFD_TRIGGER_METHOD);
     g_string_append_printf (lines, ":");
     g_string_append_printf (lines, " %s",
         msg->trigger_method->wfd_trigger_method);
@@ -1182,7 +1182,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->presentation_url) {
-    g_string_append_printf (lines, "wfd_presentation_URL");
+    g_string_append_printf (lines, GST_STRING_WFD_PRESENTATION_URL);
     g_string_append_printf (lines, ":");
     if (msg->presentation_url->wfd_url0)
       g_string_append_printf (lines, " %s", msg->presentation_url->wfd_url0);
@@ -1196,7 +1196,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->client_rtp_ports) {
-    g_string_append_printf (lines, "wfd_client_rtp_ports");
+    g_string_append_printf (lines, GST_STRING_WFD_CLIENT_RTP_PORTS);
     if (msg->client_rtp_ports->profile) {
       g_string_append_printf (lines, ":");
       g_string_append_printf (lines, " %s", msg->client_rtp_ports->profile);
@@ -1208,14 +1208,14 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->route) {
-    g_string_append_printf (lines, "wfd_route");
+    g_string_append_printf (lines, GST_STRING_WFD_ROUTE);
     g_string_append_printf (lines, ":");
     g_string_append_printf (lines, " %s", msg->route->destination);
     g_string_append_printf (lines, "\r\n");
   }
 
   if (msg->I2C) {
-    g_string_append_printf (lines, "wfd_I2C");
+    g_string_append_printf (lines, GST_STRING_WFD_I2C);
     g_string_append_printf (lines, ":");
     if (msg->I2C->I2CPresent)
       g_string_append_printf (lines, " %x", msg->I2C->I2C_port);
@@ -1225,7 +1225,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->av_format_change_timing) {
-    g_string_append_printf (lines, "wfd_av_format_change_timing");
+    g_string_append_printf (lines, GST_STRING_WFD_AV_FORMAT_CHANGE_TIMING);
     g_string_append_printf (lines, ":");
     g_string_append_printf (lines, " %010llx",
         msg->av_format_change_timing->PTS);
@@ -1235,7 +1235,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->preferred_display_mode) {
-    g_string_append_printf (lines, "wfd_preferred_display_mode");
+    g_string_append_printf (lines, GST_STRING_WFD_PREFERRED_DISPLAY_MODE);
     g_string_append_printf (lines, ":");
     if (msg->preferred_display_mode->displaymodesupported) {
       g_string_append_printf (lines, " %06llx",
@@ -1262,7 +1262,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->uibc_capability) {
-    g_string_append_printf (lines, "wfd_uibc_capability");
+    g_string_append_printf (lines, GST_STRING_WFD_UIBC_CAPABILITY);
     g_string_append_printf (lines, ":");
     if (msg->uibc_capability->uibcsupported) {
       g_string_append_printf (lines, " input_category_list=");
@@ -1399,7 +1399,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->uibc_setting) {
-    g_string_append_printf (lines, "wfd_uibc_setting");
+    g_string_append_printf (lines, GST_STRING_WFD_UIBC_SETTING);
     g_string_append_printf (lines, ":");
     if (msg->uibc_setting->uibc_setting)
       g_string_append_printf (lines, " enable");
@@ -1409,7 +1409,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->standby_resume_capability) {
-    g_string_append_printf (lines, "wfd_standby_resume_capability");
+    g_string_append_printf (lines, GST_STRING_WFD_STANDBY_RESUME_CAPABILITY);
     g_string_append_printf (lines, ":");
     if (msg->standby_resume_capability->standby_resume_cap)
       g_string_append_printf (lines, " supported");
@@ -1419,12 +1419,12 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->standby) {
-    g_string_append_printf (lines, "wfd_standby");
+    g_string_append_printf (lines, GST_STRING_WFD_STANDBY);
     g_string_append_printf (lines, "\r\n");
   }
 
   if (msg->connector_type) {
-    g_string_append_printf (lines, "wfd_connector_type");
+    g_string_append_printf (lines, GST_STRING_WFD_CONNECTOR_TYPE);
     g_string_append_printf (lines, ":");
     if (msg->connector_type->connector_type)
       g_string_append_printf (lines, " %02x",
@@ -1435,7 +1435,7 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
   }
 
   if (msg->idr_request) {
-    g_string_append_printf (lines, "wfd_idr_request");
+    g_string_append_printf (lines, GST_STRING_WFD_IDR_REQUEST);
     g_string_append_printf (lines, "\r\n");
   }
 
@@ -1453,81 +1453,81 @@ gst_wfd_message_param_names_as_text (const GstWFDMessage * msg)
 
   /* list of audio codecs */
   if (msg->audio_codecs) {
-    g_string_append_printf (lines, "wfd_audio_codecs");
+    g_string_append_printf (lines, GST_STRING_WFD_AUDIO_CODECS);
     g_string_append_printf (lines, "\r\n");
   }
   /* list of video codecs */
   if (msg->video_formats) {
-    g_string_append_printf (lines, "wfd_video_formats");
+    g_string_append_printf (lines, GST_STRING_WFD_VIDEO_FORMATS);
     g_string_append_printf (lines, "\r\n");
   }
   /* list of video 3D codecs */
   if (msg->video_3d_formats) {
-    g_string_append_printf (lines, "wfd_3d_video_formats");
+    g_string_append_printf (lines, GST_STRING_WFD_3D_VIDEO_FORMATS);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->content_protection) {
-    g_string_append_printf (lines, "wfd_content_protection");
+    g_string_append_printf (lines, GST_STRING_WFD_CONTENT_PROTECTION);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->display_edid) {
-    g_string_append_printf (lines, "wfd_display_edid");
+    g_string_append_printf (lines, GST_STRING_WFD_DISPLAY_EDID);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->coupled_sink) {
-    g_string_append_printf (lines, "wfd_coupled_sink");
+    g_string_append_printf (lines, GST_STRING_WFD_COUPLED_SINK);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->trigger_method) {
-    g_string_append_printf (lines, "wfd_trigger_method");
+    g_string_append_printf (lines, GST_STRING_WFD_TRIGGER_METHOD);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->presentation_url) {
-    g_string_append_printf (lines, "wfd_presentation_URL");
+    g_string_append_printf (lines, GST_STRING_WFD_PRESENTATION_URL);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->client_rtp_ports) {
-    g_string_append_printf (lines, "wfd_client_rtp_ports");
+    g_string_append_printf (lines, GST_STRING_WFD_CLIENT_RTP_PORTS);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->route) {
-    g_string_append_printf (lines, "wfd_route");
+    g_string_append_printf (lines, GST_STRING_WFD_ROUTE);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->I2C) {
-    g_string_append_printf (lines, "wfd_I2C");
+    g_string_append_printf (lines, GST_STRING_WFD_I2C);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->av_format_change_timing) {
-    g_string_append_printf (lines, "wfd_av_format_change_timing");
+    g_string_append_printf (lines, GST_STRING_WFD_AV_FORMAT_CHANGE_TIMING);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->preferred_display_mode) {
-    g_string_append_printf (lines, "wfd_preferred_display_mode");
+    g_string_append_printf (lines, GST_STRING_WFD_PREFERRED_DISPLAY_MODE);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->uibc_capability) {
-    g_string_append_printf (lines, "wfd_uibc_capability");
+    g_string_append_printf (lines, GST_STRING_WFD_UIBC_CAPABILITY);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->uibc_setting) {
-    g_string_append_printf (lines, "wfd_uibc_setting");
+    g_string_append_printf (lines, GST_STRING_WFD_UIBC_SETTING);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->standby_resume_capability) {
-    g_string_append_printf (lines, "wfd_standby_resume_capability");
+    g_string_append_printf (lines, GST_STRING_WFD_STANDBY_RESUME_CAPABILITY);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->standby) {
-    g_string_append_printf (lines, "wfd_standby");
+    g_string_append_printf (lines, GST_STRING_WFD_STANDBY);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->connector_type) {
-    g_string_append_printf (lines, "wfd_connector_type");
+    g_string_append_printf (lines, GST_STRING_WFD_CONNECTOR_TYPE);
     g_string_append_printf (lines, "\r\n");
   }
   if (msg->idr_request) {
-    g_string_append_printf (lines, "wfd_idr_request");
+    g_string_append_printf (lines, GST_STRING_WFD_IDR_REQUEST);
     g_string_append_printf (lines, "\r\n");
   }
 
@@ -1651,17 +1651,17 @@ gst_wfd_message_dump (const GstWFDMessage * msg)
   }
 
   if (msg->content_protection) {
-    g_print ("wfd_content_protection");
+    g_print (GST_STRING_WFD_CONTENT_PROTECTION);
     g_print ("\r\n");
   }
 
   if (msg->display_edid) {
-    g_print ("wfd_display_edid");
+    g_print (GST_STRING_WFD_DISPLAY_EDID);
     g_print ("\r\n");
   }
 
   if (msg->coupled_sink) {
-    g_print ("wfd_coupled_sink");
+    g_print (GST_STRING_WFD_COUPLED_SINK);
     g_print ("\r\n");
   }
 
@@ -1670,7 +1670,7 @@ gst_wfd_message_dump (const GstWFDMessage * msg)
   }
 
   if (msg->presentation_url) {
-    g_print ("wfd_presentation_URL");
+    g_print (GST_STRING_WFD_PRESENTATION_URL);
     g_print ("\r\n");
   }
 
@@ -1686,22 +1686,22 @@ gst_wfd_message_dump (const GstWFDMessage * msg)
   }
 
   if (msg->route) {
-    g_print ("wfd_route");
+    g_print (GST_STRING_WFD_ROUTE);
     g_print ("\r\n");
   }
 
   if (msg->I2C) {
-    g_print ("wfd_I2C");
+    g_print (GST_STRING_WFD_I2C);
     g_print ("\r\n");
   }
 
   if (msg->av_format_change_timing) {
-    g_print ("wfd_av_format_change_timing");
+    g_print (GST_STRING_WFD_AV_FORMAT_CHANGE_TIMING);
     g_print ("\r\n");
   }
 
   if (msg->preferred_display_mode) {
-    g_print ("wfd_preferred_display_mode");
+    g_print (GST_STRING_WFD_PREFERRED_DISPLAY_MODE);
     g_print ("\r\n");
   }
 
@@ -1808,22 +1808,22 @@ gst_wfd_message_dump (const GstWFDMessage * msg)
   }
 
   if (msg->standby_resume_capability) {
-    g_print ("wfd_standby_resume_capability");
+    g_print (GST_STRING_WFD_STANDBY_RESUME_CAPABILITY);
     g_print ("\r\n");
   }
 
   if (msg->standby) {
-    g_print ("wfd_standby");
+    g_print (GST_STRING_WFD_STANDBY);
     g_print ("\r\n");
   }
 
   if (msg->connector_type) {
-    g_print ("wfd_connector_type");
+    g_print (GST_STRING_WFD_CONNECTOR_TYPE);
     g_print ("\r\n");
   }
 
   if (msg->idr_request) {
-    g_print ("wfd_idr_request");
+    g_print (GST_STRING_WFD_IDR_REQUEST);
     g_print ("\r\n");
   }
 
