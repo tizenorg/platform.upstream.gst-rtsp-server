@@ -823,7 +823,7 @@ gst_wfd_parse_attribute (gchar * buffer, GstWFDMessage * msg)
         }
         }
 
-        if ((v = strstr (v, "hidc_cap_list"))) {
+        if ((v && (v = strstr (v, "hidc_cap_list")))) {
         WFD_SKIP_SPACE (v);
         WFD_READ_CHAR_END_STRING (tstring, '=');
         if (!g_strcmp0 (tstring, "hidc_cap_list")) {
