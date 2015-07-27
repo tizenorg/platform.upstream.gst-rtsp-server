@@ -130,6 +130,40 @@ GstRTSPResult         gst_rtsp_wfd_client_set_video_native_resolution (
 		                      GstRTSPWFDClient * client, guint64 native_reso);
 GstRTSPResult         gst_rtsp_wfd_client_set_audio_codec (
 		                      GstRTSPWFDClient * client, guint8 audio_codec);
+
+guint     gst_rtsp_wfd_client_get_audio_codec(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_audio_freq(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_audio_channels(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_audio_bit_width(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_audio_latency(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_codec(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_native(GstRTSPWFDClient *client);
+guint64   gst_rtsp_wfd_client_get_video_native_resolution(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_cea_resolution(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_vesa_resolution(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_hh_resolution(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_profile(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_level(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_latency(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_video_max_height(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_video_max_width(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_video_framerate(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_video_min_slice_size(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_video_slice_enc_params(GstRTSPWFDClient *client);
+guint     gst_rtsp_wfd_client_get_video_framerate_control(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_rtp_port0(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_rtp_port1(GstRTSPWFDClient *client);
+gboolean  gst_rtsp_wfd_client_get_edid_supported(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_edid_hresolution(GstRTSPWFDClient *client);
+guint32   gst_rtsp_wfd_client_get_edid_vresolution(GstRTSPWFDClient *client);
+gboolean  gst_rtsp_wfd_client_get_protection_enabled(GstRTSPWFDClient *client);
+
+void gst_rtsp_wfd_client_set_audio_freq(GstRTSPWFDClient *client, guint freq);
+void gst_rtsp_wfd_client_set_edid_supported(GstRTSPWFDClient *client, gboolean supported);
+void gst_rtsp_wfd_client_set_edid_hresolution(GstRTSPWFDClient *client, guint32 reso);
+void gst_rtsp_wfd_client_set_edid_vresolution(GstRTSPWFDClient *client, guint32 reso);
+void gst_rtsp_wfd_client_set_protection_enabled(GstRTSPWFDClient *client, gboolean enable);
+void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean flag);
 /**
  * GstRTSPWFDClientSessionFilterFunc:
  * @client: a #GstRTSPWFDClient object
