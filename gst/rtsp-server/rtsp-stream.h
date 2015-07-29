@@ -153,8 +153,9 @@ gboolean          gst_rtsp_stream_query_position   (GstRTSPStream * stream,
 gboolean          gst_rtsp_stream_query_stop       (GstRTSPStream * stream,
                                                     gint64 * stop);
 
-void              gst_rtsp_stream_set_seqnum_offset          (GstRTSPStream *stream, guint16 seqnum);
-guint16           gst_rtsp_stream_get_current_seqnum          (GstRTSPStream *stream);
+void              gst_rtsp_stream_set_seqnum_offset   (GstRTSPStream *stream, guint16 seqnum);
+guint16           gst_rtsp_stream_get_current_seqnum  (GstRTSPStream *stream);
+guint64           gst_rtsp_stream_get_udp_sent_bytes  (GstRTSPStream *stream);
 
 /**
  * GstRTSPStreamTransportFilterFunc:

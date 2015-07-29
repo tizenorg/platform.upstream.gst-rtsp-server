@@ -50,9 +50,25 @@
 #define GST_RTSP_WFD_CLIENT_GET_PRIVATE(obj)  \
    (G_TYPE_INSTANCE_GET_PRIVATE ((obj), GST_TYPE_RTSP_WFD_CLIENT, GstRTSPWFDClientPrivate))
 
-/* locking order:
- * send_lock, lock, tunnels_lock
- */
+typedef struct _GstRTSPClientRTPStats GstRTSPClientRTPStats;
+
+struct _GstRTSPClientRTPStats {
+  GstRTSPStream *stream;
+  guint64 last_sent_bytes;
+  guint64 sent_bytes;
+  guint last_seqnum;
+  guint seqnum;
+
+  /* Info in RR (Receiver Report) */
+  guint8 fraction_lost;
+  guint32 cumulative_lost_num;
+  guint16 max_seqnum;
+  guint32 arrival_jitter;
+  guint32 lsr;
+  guint32 dlsr;
+  guint32 rtt;
+  guint resent_packets;
+};
 
 struct _GstRTSPWFDClientPrivate
 {
@@ -116,6 +132,12 @@ struct _GstRTSPWFDClientPrivate
 
   gboolean keep_alive_flag;
   GMutex keep_alive_lock;
+
+  /* RTP statistics */
+  GstRTSPClientRTPStats stats;
+  GMutex stats_lock;
+  guint stats_timer_id;
+  gboolean rtcp_stats_enabled;
 };
 
 #define DEFAULT_WFD_TIMEOUT 60
@@ -154,9 +176,11 @@ static void wfd_options_request_done (GstRTSPWFDClient * client);
 static void wfd_get_param_request_done (GstRTSPWFDClient * client);
 static void handle_wfd_response (GstRTSPClient * client, GstRTSPContext * ctx);
 static void handle_wfd_play (GstRTSPClient * client, GstRTSPContext * ctx);
-static void wfd_set_keep_alive_condition(GstRTSPClient * client);
+static void wfd_set_keep_alive_condition(GstRTSPWFDClient * client);
 static gboolean wfd_ckeck_keep_alive_response (gpointer userdata);
 static gboolean keep_alive_condition(gpointer userdata);
+static gboolean wfd_configure_client_media (GstRTSPClient * client, GstRTSPMedia * media,
+    GstRTSPStream * stream, GstRTSPContext * ctx);
 
 GstRTSPResult prepare_trigger_request (GstRTSPWFDClient * client,
     GstRTSPMessage * request, GstWFDTriggerType trigger_type, gchar * url);
@@ -195,7 +219,6 @@ gst_rtsp_wfd_client_class_init (GstRTSPWFDClientClass * klass)
   gobject_class->finalize = gst_rtsp_wfd_client_finalize;
 
   //klass->create_sdp = create_sdp;
-  //klass->configure_client_media = default_configure_client_media;
   //klass->configure_client_transport = default_configure_client_transport;
   //klass->params_set = default_params_set;
   //klass->params_get = default_params_get;
@@ -204,6 +227,7 @@ gst_rtsp_wfd_client_class_init (GstRTSPWFDClientClass * klass)
   rtsp_client_class->handle_set_param_request = handle_wfd_set_param_request;
   rtsp_client_class->handle_get_param_request = handle_wfd_get_param_request;
   rtsp_client_class->make_path_from_uri = wfd_make_path_from_uri;
+  rtsp_client_class->configure_client_media = wfd_configure_client_media;
 
   rtsp_client_class->handle_response = handle_wfd_response;
   rtsp_client_class->play_request = handle_wfd_play;
@@ -240,9 +264,16 @@ gst_rtsp_wfd_client_init (GstRTSPWFDClient * client)
   priv->video_resolution_supported = GST_WFD_CEA_640x480P60;
   priv->audio_codec = GST_WFD_AUDIO_AAC;
   priv->keep_alive_flag = FALSE;
+
   g_mutex_init (&priv->keep_alive_lock);
+  g_mutex_init (&priv->stats_lock);
 
   priv->host_address = NULL;
+
+  priv->stats_timer_id = -1;
+  priv->rtcp_stats_enabled = FALSE;
+  memset (&priv->stats, 0x00, sizeof (GstRTSPClientRTPStats));
+
   GST_INFO_OBJECT (client, "Client is initialized");
 }
 
@@ -260,7 +291,12 @@ gst_rtsp_wfd_client_finalize (GObject * obj)
 
   if (priv->host_address)
     g_free (priv->host_address);
+
+  if (priv->stats_timer_id > 0)
+    g_source_remove(priv->stats_timer_id);
+
   g_mutex_clear (&priv->keep_alive_lock);
+  g_mutex_clear (&priv->stats_lock);
   G_OBJECT_CLASS (gst_rtsp_wfd_client_parent_class)->finalize (obj);
 }
 
@@ -319,6 +355,94 @@ gst_rtsp_wfd_client_start_wfd (GstRTSPWFDClient * client)
   return;
 }
 
+static gboolean
+wfd_display_rtp_stats(gpointer userdata)
+{
+  guint16 seqnum = 0;
+  guint64 bytes = 0;
+
+  GstRTSPWFDClient *client = NULL;
+  GstRTSPWFDClientPrivate *priv = NULL;
+
+  client = (GstRTSPWFDClient *) userdata;
+  priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  if (!priv) {
+    GST_ERROR("No priv");
+    return FALSE;
+  }
+
+  g_mutex_lock(&priv->stats_lock);
+
+  seqnum = gst_rtsp_stream_get_current_seqnum (priv->stats.stream);
+  bytes = gst_rtsp_stream_get_udp_sent_bytes (priv->stats.stream);
+
+  GST_INFO ("----------------------------------------------------\n");
+  GST_INFO ("Sent RTP packets : %d", seqnum - priv->stats.last_seqnum);
+  GST_INFO ("Sent Bytes of RTP packets : %lld bytes", bytes - priv->stats.last_sent_bytes);
+
+  priv->stats.last_seqnum = seqnum;
+  priv->stats.last_sent_bytes = bytes;
+
+  if (priv->rtcp_stats_enabled) {
+    GST_INFO ("Fraction Lost: %d", priv->stats.fraction_lost);
+    GST_INFO ("Cumulative number of packets lost: %d", priv->stats.cumulative_lost_num);
+    GST_INFO ("Extended highest sequence number received: %d", priv->stats.max_seqnum);
+    GST_INFO ("Interarrival Jitter: %d", priv->stats.arrival_jitter);
+    GST_INFO ("Round trip time : %d", priv->stats.rtt);
+  }
+
+  GST_INFO ("----------------------------------------------------\n");
+
+  g_mutex_unlock(&priv->stats_lock);
+
+  return TRUE;
+}
+
+static void
+on_rtcp_stats (GstRTSPStream *stream, GstStructure *stats, GstRTSPClient *client)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  guint fraction_lost, exthighestseq, jitter, lsr, dlsr, rtt;
+  gint packetslost;
+
+  if (!priv) return;
+
+  g_mutex_lock(&priv->stats_lock);
+
+  gst_structure_get_uint (stats, "rb-fractionlost", &fraction_lost);
+  gst_structure_get_int (stats, "rb-packetslost", &packetslost);
+  gst_structure_get_uint (stats, "rb-exthighestseq", &exthighestseq);
+  gst_structure_get_uint (stats, "rb-jitter", &jitter);
+  gst_structure_get_uint (stats, "rb-lsr", &lsr);
+  gst_structure_get_uint (stats, "rb-dlsr", &dlsr);
+  gst_structure_get_uint (stats, "rb-round-trip", &rtt);
+
+  if (!priv->rtcp_stats_enabled)
+    priv->rtcp_stats_enabled = TRUE;
+
+  priv->stats.stream = stream;
+  priv->stats.fraction_lost = (guint8)fraction_lost;
+  priv->stats.cumulative_lost_num += (guint32)fraction_lost;
+  priv->stats.max_seqnum = (guint16)exthighestseq;
+  priv->stats.arrival_jitter = (guint32)jitter;
+  priv->stats.lsr = (guint32)lsr;
+  priv->stats.dlsr = (guint32)dlsr;
+  priv->stats.rtt = (guint32)rtt;
+
+  g_mutex_unlock(&priv->stats_lock);
+}
+
+static gboolean
+wfd_configure_client_media (GstRTSPClient * client, GstRTSPMedia * media,
+    GstRTSPStream * stream, GstRTSPContext * ctx)
+{
+  if (stream)
+    g_signal_connect (stream, "rtcp-statistics", (GCallback) on_rtcp_stats, client);
+
+  return GST_RTSP_CLIENT_CLASS (gst_rtsp_wfd_client_parent_class)->configure_client_media (client, media, stream, ctx);
+}
 static void
 wfd_options_request_done (GstRTSPWFDClient * client)
 {
@@ -791,7 +915,14 @@ wfd_make_path_from_uri (GstRTSPClient * client, const GstRTSPUrl * uri)
 static void
 handle_wfd_play (GstRTSPClient * client, GstRTSPContext * ctx)
 {
-  wfd_set_keep_alive_condition(client);
+  GstRTSPWFDClient *_client = GST_RTSP_WFD_CLIENT (client);
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+
+  g_return_if_fail (priv != NULL);
+
+  wfd_set_keep_alive_condition(_client);
+  
+  priv->stats_timer_id = g_timeout_add (2000, wfd_display_rtp_stats, _client);
 }
 
 static void
@@ -2301,12 +2432,9 @@ keep_alive_condition(gpointer userdata)
 }
 
 static
-void wfd_set_keep_alive_condition(GstRTSPClient * client)
+void wfd_set_keep_alive_condition(GstRTSPWFDClient * client)
 {
-  GstRTSPWFDClient *wfd_client;
-  wfd_client = GST_RTSP_WFD_CLIENT(client);
-
-  g_timeout_add((DEFAULT_WFD_TIMEOUT-5)*1000, keep_alive_condition, wfd_client);
+  g_timeout_add((DEFAULT_WFD_TIMEOUT-5)*1000, keep_alive_condition, client);
 }
 
 void
@@ -2612,3 +2740,4 @@ void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean 
     priv->keep_alive_flag = flag;
   g_mutex_unlock(&priv->keep_alive_lock);
 }
+
