@@ -3,7 +3,7 @@ Summary:    Multimedia Framework Library
 Version:    1.4.5
 Release:    3
 Group:      System/Libraries
-License:    LGPLv2+
+License:    LGPL-2.1+
 Source0:    %{name}-%{version}.tar.gz
 Requires(post):  /sbin/ldconfig
 Requires(postun):  /sbin/ldconfig
@@ -48,7 +48,7 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 mkdir -p %{buildroot}/%{_datadir}/license
-cp -rf %{_builddir}/%{name}-%{version}/LICENSE.LGPLv2.1 %{buildroot}%{_datadir}/license/%{name}
+cp -rf %{_builddir}/%{name}-%{version}/COPYING %{buildroot}%{_datadir}/license/%{name}
 
 %clean
 rm -rf %{buildroot}
