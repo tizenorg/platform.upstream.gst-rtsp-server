@@ -356,7 +356,7 @@ gst_rtsp_wfd_client_start_wfd (GstRTSPWFDClient * client)
 }
 
 static gboolean
-wfd_display_rtp_stats(gpointer userdata)
+wfd_display_rtp_stats (gpointer userdata)
 {
   guint16 seqnum = 0;
   guint64 bytes = 0;
@@ -438,8 +438,12 @@ static gboolean
 wfd_configure_client_media (GstRTSPClient * client, GstRTSPMedia * media,
     GstRTSPStream * stream, GstRTSPContext * ctx)
 {
-  if (stream)
+  if (stream) {
+    GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+    if (priv)
+      priv->stats.stream = stream;
     g_signal_connect (stream, "rtcp-statistics", (GCallback) on_rtcp_stats, client);
+  }
 
   return GST_RTSP_CLIENT_CLASS (gst_rtsp_wfd_client_parent_class)->configure_client_media (client, media, stream, ctx);
 }
