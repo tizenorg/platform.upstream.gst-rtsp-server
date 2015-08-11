@@ -2105,7 +2105,7 @@ gst_wfd_message_get_supported_video_format (GstWFDMessage * msg,
   *v_codec = GST_WFD_VIDEO_H264;
   *v_native = msg->video_formats->list->native & 0x7;
   nativeindex = msg->video_formats->list->native >> 3;
-  *v_native_resolution = 1 << nativeindex;
+  *v_native_resolution = ((guint64) 1) << nativeindex;
   *v_profile = msg->video_formats->list->H264_codec.profile;
   *v_level = msg->video_formats->list->H264_codec.level;
   *v_max_height = msg->video_formats->list->H264_codec.max_hres;
@@ -2149,7 +2149,7 @@ gst_wfd_message_get_prefered_video_format (GstWFDMessage * msg,
   *v_codec = GST_WFD_VIDEO_H264;
   *v_native = msg->video_formats->list->native & 0x7;
   nativeindex = msg->video_formats->list->native >> 3;
-  *v_native_resolution = 1 << nativeindex;
+  *v_native_resolution = ((guint64) 1) << nativeindex;
   *v_profile = msg->video_formats->list->H264_codec.profile;
   *v_level = msg->video_formats->list->H264_codec.level;
   *v_max_height = msg->video_formats->list->H264_codec.max_hres;

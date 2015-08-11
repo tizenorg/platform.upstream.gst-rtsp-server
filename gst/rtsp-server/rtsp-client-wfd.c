@@ -103,9 +103,9 @@ struct _GstRTSPWFDClientPrivate
   guint64 cNativeResolution;
   guint64 video_resolution_supported;
   gint video_native_resolution;
-  guint cCEAResolution;
-  guint cVESAResolution;
-  guint cHHResolution;
+  guint64 cCEAResolution;
+  guint64 cVESAResolution;
+  guint64 cHHResolution;
   guint cProfile;
   guint cLevel;
   guint32 cMaxHeight;
@@ -508,7 +508,7 @@ wfd_get_prefered_resolution (guint64 srcResolution,
   for (i = 0; i < 32; i++) {
     if (((sinkResolution << i) & 0x80000000)
         && ((srcResolution << i) & 0x80000000)) {
-      resolution = (0x00000001 << (31 - i));
+      resolution = ((guint64) 0x00000001 << (31 - i));
       break;
     }
   }
