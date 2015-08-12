@@ -3,7 +3,7 @@ Summary:    Multimedia Framework Library
 Version:    1.4.5
 Release:    3
 Group:      System/Libraries
-License:    LGPL-2.1+
+License:    LGPL-2.0+
 Source0:    %{name}-%{version}.tar.gz
 Requires(post):  /sbin/ldconfig
 Requires(postun):  /sbin/ldconfig
