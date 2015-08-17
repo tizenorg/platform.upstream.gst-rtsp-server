@@ -513,6 +513,7 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
 {
   GstElement *videosrc = NULL;
   GstElement *vcaps = NULL;
+  GstElement *videoconvert = NULL;
   GstElement *venc_caps = NULL;
   gchar *vcodec = NULL;
   GstElement *venc = NULL;
@@ -539,6 +540,28 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
 
   g_object_set (G_OBJECT (vcaps), "caps",
       gst_caps_new_simple ("video/x-raw",
+          "format", G_TYPE_STRING, "I420",
+          "width", G_TYPE_INT, priv->video_width,
+          "height", G_TYPE_INT, priv->video_height,
+          "framerate", GST_TYPE_FRACTION, priv->video_framerate, 1, NULL),
+      NULL);
+
+  /* create video convert element */
+  videoconvert = gst_element_factory_make ("videoconvert", "videoconvert");
+  if (NULL == videoconvert) {
+    GST_ERROR_OBJECT (factory, "failed to create video videoconvert element");
+    goto create_error;
+  }
+
+  venc_caps = gst_element_factory_make ("capsfilter", "venc_caps");
+  if (NULL == venc_caps) {
+    GST_ERROR_OBJECT (factory, "failed to create video capsilfter element");
+    goto create_error;
+  }
+
+  g_object_set (G_OBJECT (venc_caps), "caps",
+      gst_caps_new_simple ("video/x-raw",
+          "format", G_TYPE_STRING, "SN12",
           "width", G_TYPE_INT, priv->video_width,
           "height", G_TYPE_INT, priv->video_height,
           "framerate", GST_TYPE_FRACTION, priv->video_framerate, 1, NULL),
@@ -563,16 +586,6 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
   g_object_set (venc, "byte-stream", 1, NULL);
   g_object_set (venc, "bitrate", 512, NULL);
 
-  venc_caps = gst_element_factory_make ("capsfilter", "venc_caps");
-  if (NULL == venc_caps) {
-    GST_ERROR_OBJECT (factory, "failed to create video capsilfter element");
-    goto create_error;
-  }
-
-  g_object_set (G_OBJECT (venc_caps), "caps",
-      gst_caps_new_simple ("video/x-h264",
-          "profile", G_TYPE_STRING, "baseline", NULL), NULL);
-
   vparse = gst_element_factory_make ("h264parse", "videoparse");
   if (NULL == vparse) {
     GST_ERROR_OBJECT (factory, "failed to create h264 parse element");
@@ -586,8 +599,8 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, venc_caps, vparse, vqueue, NULL);
-  if (!gst_element_link_many (videosrc, vcaps, venc, venc_caps, vparse, vqueue, NULL)) {
+  gst_bin_add_many (srcbin, videosrc, vcaps, videoconvert, venc_caps, venc, vparse, vqueue, NULL);
+  if (!gst_element_link_many (videosrc, vcaps, videoconvert, venc_caps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
   }
