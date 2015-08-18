@@ -164,6 +164,28 @@ void gst_rtsp_wfd_client_set_edid_hresolution(GstRTSPWFDClient *client, guint32 
 void gst_rtsp_wfd_client_set_edid_vresolution(GstRTSPWFDClient *client, guint32 reso);
 void gst_rtsp_wfd_client_set_protection_enabled(GstRTSPWFDClient *client, gboolean enable);
 void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean flag);
+void gst_rtsp_wfd_client_set_aud_codec(GstRTSPWFDClient *client, guint acodec);
+void gst_rtsp_wfd_client_set_audio_channels(GstRTSPWFDClient *client, guint channels);
+void gst_rtsp_wfd_client_set_audio_bit_width(GstRTSPWFDClient *client, guint bwidth);
+void gst_rtsp_wfd_client_set_audio_latency(GstRTSPWFDClient *client, guint latency);
+void gst_rtsp_wfd_client_set_video_codec(GstRTSPWFDClient *client, guint vcodec);
+void gst_rtsp_wfd_client_set_video_native(GstRTSPWFDClient *client, guint native);
+void gst_rtsp_wfd_client_set_vid_native_resolution(GstRTSPWFDClient *client, guint64 res);
+void gst_rtsp_wfd_client_set_video_cea_resolution(GstRTSPWFDClient *client, guint res);
+void gst_rtsp_wfd_client_set_video_vesa_resolution(GstRTSPWFDClient *client, guint res);
+void gst_rtsp_wfd_client_set_video_hh_resolution(GstRTSPWFDClient *client, guint res);
+void gst_rtsp_wfd_client_set_video_profile(GstRTSPWFDClient *client, guint profile);
+void gst_rtsp_wfd_client_set_video_level(GstRTSPWFDClient *client, guint level);
+void gst_rtsp_wfd_client_set_video_latency(GstRTSPWFDClient *client, guint latency);
+void gst_rtsp_wfd_client_set_video_max_height(GstRTSPWFDClient *client, guint32 height);
+void gst_rtsp_wfd_client_set_video_max_width(GstRTSPWFDClient *client, guint32 width);
+void gst_rtsp_wfd_client_set_video_framerate(GstRTSPWFDClient *client, guint32 framerate);
+void gst_rtsp_wfd_client_set_video_min_slice_size(GstRTSPWFDClient *client, guint32 slice_size);
+void gst_rtsp_wfd_client_set_video_slice_enc_params(GstRTSPWFDClient *client, guint32 enc_params);
+void gst_rtsp_wfd_client_set_video_framerate_control(GstRTSPWFDClient *client, guint framerate);
+void gst_rtsp_wfd_client_set_rtp_port0(GstRTSPWFDClient *client, guint32 port);
+void gst_rtsp_wfd_client_set_rtp_port1(GstRTSPWFDClient *client, guint32 port);
+
 /**
  * GstRTSPWFDClientSessionFilterFunc:
  * @client: a #GstRTSPWFDClient object

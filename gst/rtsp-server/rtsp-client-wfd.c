@@ -2745,3 +2745,191 @@ void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean 
   g_mutex_unlock(&priv->keep_alive_lock);
 }
 
+void
+gst_rtsp_wfd_client_set_aud_codec (GstRTSPWFDClient *client, guint acodec)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->caCodec = acodec;
+}
+
+void
+gst_rtsp_wfd_client_set_audio_channels(GstRTSPWFDClient *client, guint channels)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cChanels = channels;
+}
+
+void
+gst_rtsp_wfd_client_set_audio_bit_width(GstRTSPWFDClient *client, guint bwidth)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cBitwidth = bwidth;
+}
+
+void
+gst_rtsp_wfd_client_set_audio_latency(GstRTSPWFDClient *client, guint latency)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->caLatency = latency;
+}
+
+void
+gst_rtsp_wfd_client_set_video_codec(GstRTSPWFDClient *client, guint vcodec)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cvCodec = vcodec;
+}
+
+void
+gst_rtsp_wfd_client_set_video_native(GstRTSPWFDClient *client, guint native)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cNative = native;
+}
+
+void
+gst_rtsp_wfd_client_set_vid_native_resolution(GstRTSPWFDClient *client, guint64 res)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cNativeResolution = res;
+}
+
+void
+gst_rtsp_wfd_client_set_video_cea_resolution(GstRTSPWFDClient *client, guint res)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cCEAResolution = res;
+}
+
+void
+gst_rtsp_wfd_client_set_video_vesa_resolution(GstRTSPWFDClient *client, guint res)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cVESAResolution = res;
+}
+
+void
+gst_rtsp_wfd_client_set_video_hh_resolution(GstRTSPWFDClient *client, guint res)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cHHResolution = res;
+}
+
+void
+gst_rtsp_wfd_client_set_video_profile(GstRTSPWFDClient *client, guint profile)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cProfile = profile;
+}
+
+void
+gst_rtsp_wfd_client_set_video_level(GstRTSPWFDClient *client, guint level)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cLevel = level;
+}
+
+void
+gst_rtsp_wfd_client_set_video_latency(GstRTSPWFDClient *client, guint latency)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cvLatency = latency;
+}
+
+void
+gst_rtsp_wfd_client_set_video_max_height(GstRTSPWFDClient *client, guint32 height)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cMaxHeight = height;
+}
+
+void
+gst_rtsp_wfd_client_set_video_max_width(GstRTSPWFDClient *client, guint32 width)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cMaxWidth = width;
+}
+
+void
+gst_rtsp_wfd_client_set_video_framerate(GstRTSPWFDClient *client, guint32 framerate)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cFramerate = framerate;
+}
+
+void
+gst_rtsp_wfd_client_set_video_min_slice_size(GstRTSPWFDClient *client, guint32 slice_size)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cmin_slice_size = slice_size;
+}
+
+void
+gst_rtsp_wfd_client_set_video_slice_enc_params(GstRTSPWFDClient *client, guint32 enc_params)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cslice_enc_params = enc_params;
+}
+
+void
+gst_rtsp_wfd_client_set_video_framerate_control(GstRTSPWFDClient *client, guint framerate)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->cframe_rate_control = framerate;
+}
+
+void
+gst_rtsp_wfd_client_set_rtp_port0(GstRTSPWFDClient *client, guint32 port)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->crtp_port0 = port;
+}
+
+void
+gst_rtsp_wfd_client_set_rtp_port1(GstRTSPWFDClient *client, guint32 port)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->crtp_port1 = port;
+}
