@@ -172,8 +172,8 @@ static void send_generic_wfd_response (GstRTSPWFDClient * client,
     GstRTSPStatusCode code, GstRTSPContext * ctx);
 static gchar *wfd_make_path_from_uri (GstRTSPClient * client,
     const GstRTSPUrl * uri);
-static void wfd_options_request_done (GstRTSPWFDClient * client);
-static void wfd_get_param_request_done (GstRTSPWFDClient * client);
+static void wfd_options_request_done (GstRTSPWFDClient * client, GstRTSPContext *ctx);
+static void wfd_get_param_request_done (GstRTSPWFDClient * client, GstRTSPContext *ctx);
 static void handle_wfd_response (GstRTSPClient * client, GstRTSPContext * ctx);
 static void handle_wfd_play (GstRTSPClient * client, GstRTSPContext * ctx);
 static void wfd_set_keep_alive_condition(GstRTSPWFDClient * client);
@@ -236,13 +236,13 @@ gst_rtsp_wfd_client_class_init (GstRTSPWFDClientClass * klass)
       g_signal_new ("wfd-options-request", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstRTSPWFDClientClass,
           wfd_options_request), NULL, NULL, g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE, 1, G_TYPE_POINTER);
+      G_TYPE_NONE, 2, GST_TYPE_RTSP_WFD_CLIENT, GST_TYPE_RTSP_CONTEXT);
 
   gst_rtsp_client_wfd_signals[SIGNAL_WFD_GET_PARAMETER_REQUEST] =
       g_signal_new ("wfd-get-parameter-request", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstRTSPWFDClientClass,
           wfd_get_param_request), NULL, NULL, g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE, 1, G_TYPE_POINTER);
+      G_TYPE_NONE, 2, GST_TYPE_RTSP_WFD_CLIENT, GST_TYPE_RTSP_CONTEXT);
 
   klass->wfd_options_request = wfd_options_request_done;
   klass->wfd_get_param_request = wfd_get_param_request_done;
@@ -448,9 +448,13 @@ wfd_configure_client_media (GstRTSPClient * client, GstRTSPMedia * media,
   return GST_RTSP_CLIENT_CLASS (gst_rtsp_wfd_client_parent_class)->configure_client_media (client, media, stream, ctx);
 }
 static void
-wfd_options_request_done (GstRTSPWFDClient * client)
+wfd_options_request_done (GstRTSPWFDClient * client, GstRTSPContext *ctx)
 {
   GstRTSPResult res = GST_RTSP_OK;
+  GstRTSPWFDClientClass *klass = GST_RTSP_WFD_CLIENT_GET_CLASS (client);
+
+  g_return_if_fail (klass != NULL);
+
   GST_INFO_OBJECT (client, "M2 done..");
 
   res = handle_M3_message (client);
@@ -458,16 +462,21 @@ wfd_options_request_done (GstRTSPWFDClient * client)
     GST_ERROR_OBJECT (client, "handle_M3_message failed : %d", res);
   }
 
+  if (klass->prepare_resource) {
+    klass->prepare_resource (client, ctx);
+  }
+
   return;
 }
 
 static void
-wfd_get_param_request_done (GstRTSPWFDClient * client)
+wfd_get_param_request_done (GstRTSPWFDClient * client, GstRTSPContext *ctx)
 {
   GstRTSPResult res = GST_RTSP_OK;
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  GstRTSPWFDClientClass *klass = GST_RTSP_WFD_CLIENT_GET_CLASS (client);
 
-  g_return_if_fail (priv != NULL);
+  g_return_if_fail (priv != NULL && klass != NULL);
 
   priv->m3_done = TRUE;
   GST_INFO_OBJECT (client, "M3 done..");
@@ -475,6 +484,10 @@ wfd_get_param_request_done (GstRTSPWFDClient * client)
   res = handle_M4_message (client);
   if (res < GST_RTSP_OK) {
     GST_ERROR_OBJECT (client, "handle_M4_message failed : %d", res);
+  }
+
+  if (klass->confirm_resource) {
+    klass->confirm_resource (client, ctx);
   }
 
   return;

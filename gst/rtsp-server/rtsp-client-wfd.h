@@ -105,9 +105,12 @@ struct _GstRTSPWFDClient {
 struct _GstRTSPWFDClientClass {
   GstRTSPClientClass  parent_class;
 
+  GstRTSPResult       (*prepare_resource) (GstRTSPWFDClient *client, GstRTSPContext *ctx);
+  GstRTSPResult       (*confirm_resource) (GstRTSPWFDClient *client, GstRTSPContext *ctx);
+
   /* signals */
-  void     (*wfd_options_request)         (GstRTSPWFDClient *client);
-  void     (*wfd_get_param_request)        (GstRTSPWFDClient *client);
+  void     (*wfd_options_request)         (GstRTSPWFDClient *client, GstRTSPContext *ctx);
+  void     (*wfd_get_param_request)       (GstRTSPWFDClient *client, GstRTSPContext *ctx);
 
   /*< private >*/
   gpointer _gst_reserved[GST_PADDING_LARGE];
