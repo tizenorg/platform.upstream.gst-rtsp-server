@@ -61,8 +61,6 @@ G_BEGIN_DECLS
 #define GST_STRING_WFD_I2C                        "wfd_I2C"
 #define GST_STRING_WFD_AV_FORMAT_CHANGE_TIMING    "wfd_av_format_change_timing"
 #define GST_STRING_WFD_PREFERRED_DISPLAY_MODE     "wfd_preferred_display_mode"
-#define GST_STRING_WFD_UIBC_CAPABILITY            "wfd_uibc_capability"
-#define GST_STRING_WFD_UIBC_SETTING               "wfd_uibc_setting"
 #define GST_STRING_WFD_STANDBY_RESUME_CAPABILITY  "wfd_standby_resume_capability"
 #define GST_STRING_WFD_STANDBY                    "wfd_standby"
 #define GST_STRING_WFD_CONNECTOR_TYPE             "wfd_connector_type"
@@ -248,34 +246,6 @@ typedef enum {
 } GstWFDSinkType;
 
 typedef enum {
-  GST_WFD_UIBC_INPUT_CAT_UNKNOWN   = 0,
-  GST_WFD_UIBC_INPUT_CAT_GENERIC   = (1 << 0),
-  GST_WFD_UIBC_INPUT_CAT_HIDC      = (1 << 1),
-} GstWFDUibcinput_cat;
-
-typedef enum {
-  GST_WFD_UIBC_INPUT_TYPE_UNKNOWN        = 0,
-  GST_WFD_UIBC_INPUT_TYPE_KEYBOARD       = (1 << 0),
-  GST_WFD_UIBC_INPUT_TYPE_MOUSE          = (1 << 1),
-  GST_WFD_UIBC_INPUT_TYPE_SINGLETOUCH    = (1 << 2),
-  GST_WFD_UIBC_INPUT_TYPE_MULTITOUCH     = (1 << 3),
-  GST_WFD_UIBC_INPUT_TYPE_JOYSTICK       = (1 << 4),
-  GST_WFD_UIBC_INPUT_TYPE_CAMERA         = (1 << 5),
-  GST_WFD_UIBC_INPUT_TYPE_GESTURE        = (1 << 6),
-  GST_WFD_UIBC_INPUT_TYPE_REMOTECONTROL  = (1 << 7)
-} GstWFDUibcinp_type;
-
-typedef enum {
-  GST_WFD_UIBC_INPUT_PATH_UNKNOWN   = 0,
-  GST_WFD_UIBC_INPUT_PATH_INFRARED  = (1 << 0),
-  GST_WFD_UIBC_INPUT_PATH_USB       = (1 << 1),
-  GST_WFD_UIBC_INPUT_PATH_BT        = (1 << 2),
-  GST_WFD_UIBC_INPUT_PATH_ZIGBEE    = (1 << 3),
-  GST_WFD_UIBC_INPUT_PATH_WIFI      = (1 << 4),
-  GST_WFD_UIBC_INPUT_PATH_NOSP      = (1 << 5)
-} GstWFDUibcinp_path;
-
-typedef enum {
   GST_WFD_CONNECTOR_VGA           = 0,
   GST_WFD_CONNECTOR_S,
   GST_WFD_CONNECTOR_COMPOSITE,
@@ -436,43 +406,6 @@ typedef struct {
 } GstWFDPreferredDisplayMode;
 
 typedef struct {
-  guint32 input_cat;
-} GstWFDInputCategoryList;
-
-typedef struct {
-  guint32 inp_type;
-} GstWFDGenericCategoryList;
-
-typedef struct _detailed_cap detailed_cap;
-
-typedef struct {
-  GstWFDUibcinp_type inp_type;
-  GstWFDUibcinp_path inp_path;
-} GstWFDHIDCTypePathPair;
-
-struct _detailed_cap {
-  GstWFDHIDCTypePathPair p;
-  detailed_cap *next;
-};
-
-typedef struct {
-  guint cap_count;
-  detailed_cap *next;
-} GstWFDHIDCCategoryList;
-
-typedef struct {
-  gboolean uibcsupported;
-  GstWFDInputCategoryList input_category_list;
-  GstWFDGenericCategoryList generic_cap_list;
-  GstWFDHIDCCategoryList hidc_cap_list;
-  guint32 tcp_port;
-} GstWFDUibcCapability;
-
-typedef struct {
-  gboolean uibc_setting;
-} GstWFDUibcSetting;
-
-typedef struct {
   gboolean standby_resume_cap;
 } GstWFDStandbyResumeCapability;
 
@@ -522,8 +455,6 @@ typedef struct {
   GstWFDI2C *I2C;
   GstWFDAVFormatChangeTiming *av_format_change_timing;
   GstWFDPreferredDisplayMode *preferred_display_mode;
-  GstWFDUibcCapability *uibc_capability;
-  GstWFDUibcSetting *uibc_setting;
   GstWFDStandbyResumeCapability *standby_resume_capability;
   GstWFDStandby *standby;
   GstWFDConnectorType *connector_type;
