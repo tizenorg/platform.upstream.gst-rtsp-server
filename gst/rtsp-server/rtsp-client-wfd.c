@@ -2551,7 +2551,7 @@ gst_rtsp_wfd_client_get_video_native_resolution(GstRTSPWFDClient *client)
   return priv->cNativeResolution;
 }
 
-guint
+guint64
 gst_rtsp_wfd_client_get_video_cea_resolution(GstRTSPWFDClient *client)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
@@ -2560,7 +2560,7 @@ gst_rtsp_wfd_client_get_video_cea_resolution(GstRTSPWFDClient *client)
   return priv->cCEAResolution;
 }
 
-guint
+guint64
 gst_rtsp_wfd_client_get_video_vesa_resolution(GstRTSPWFDClient *client)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
@@ -2569,7 +2569,7 @@ gst_rtsp_wfd_client_get_video_vesa_resolution(GstRTSPWFDClient *client)
   return priv->cVESAResolution;
 }
 
-guint
+guint64
 gst_rtsp_wfd_client_get_video_hh_resolution(GstRTSPWFDClient *client)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
@@ -2833,7 +2833,7 @@ gst_rtsp_wfd_client_set_vid_native_resolution(GstRTSPWFDClient *client, guint64 
 }
 
 void
-gst_rtsp_wfd_client_set_video_cea_resolution(GstRTSPWFDClient *client, guint res)
+gst_rtsp_wfd_client_set_video_cea_resolution(GstRTSPWFDClient *client, guint64 res)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
   g_return_if_fail (priv != NULL);
@@ -2842,7 +2842,7 @@ gst_rtsp_wfd_client_set_video_cea_resolution(GstRTSPWFDClient *client, guint res
 }
 
 void
-gst_rtsp_wfd_client_set_video_vesa_resolution(GstRTSPWFDClient *client, guint res)
+gst_rtsp_wfd_client_set_video_vesa_resolution(GstRTSPWFDClient *client, guint64 res)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
   g_return_if_fail (priv != NULL);
@@ -2851,7 +2851,7 @@ gst_rtsp_wfd_client_set_video_vesa_resolution(GstRTSPWFDClient *client, guint re
 }
 
 void
-gst_rtsp_wfd_client_set_video_hh_resolution(GstRTSPWFDClient *client, guint res)
+gst_rtsp_wfd_client_set_video_hh_resolution(GstRTSPWFDClient *client, guint64 res)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
   g_return_if_fail (priv != NULL);
