@@ -147,6 +147,7 @@ enum
 {
   SIGNAL_WFD_OPTIONS_REQUEST,
   SIGNAL_WFD_GET_PARAMETER_REQUEST,
+  SIGNAL_WFD_KEEP_ALIVE_FAIL,
   SIGNAL_WFD_LAST
 };
 
@@ -243,6 +244,11 @@ gst_rtsp_wfd_client_class_init (GstRTSPWFDClientClass * klass)
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstRTSPWFDClientClass,
           wfd_get_param_request), NULL, NULL, g_cclosure_marshal_VOID__POINTER,
       G_TYPE_NONE, 2, GST_TYPE_RTSP_WFD_CLIENT, GST_TYPE_RTSP_CONTEXT);
+
+  gst_rtsp_client_wfd_signals[SIGNAL_WFD_KEEP_ALIVE_FAIL] =
+      g_signal_new ("wfd-keep-alive-fail", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET (GstRTSPWFDClientClass, wfd_keep_alive_fail), NULL, NULL,
+      g_cclosure_marshal_generic, G_TYPE_NONE, 0, G_TYPE_NONE);
 
   klass->wfd_options_request = wfd_options_request_done;
   klass->wfd_get_param_request = wfd_get_param_request_done;
@@ -2383,7 +2389,10 @@ wfd_ckeck_keep_alive_response (gpointer userdata)
   }
   else {
     GST_INFO ("%p: source error notification", client);
-    // FIXME Do something here. Maybe emit some signal?
+
+    g_signal_emit (client,
+        gst_rtsp_client_wfd_signals[SIGNAL_WFD_KEEP_ALIVE_FAIL], 0,
+        NULL);
     return FALSE;
   }
 }

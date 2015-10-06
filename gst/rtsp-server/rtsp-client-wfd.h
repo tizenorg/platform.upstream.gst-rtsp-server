@@ -111,6 +111,7 @@ struct _GstRTSPWFDClientClass {
   /* signals */
   void     (*wfd_options_request)         (GstRTSPWFDClient *client, GstRTSPContext *ctx);
   void     (*wfd_get_param_request)       (GstRTSPWFDClient *client, GstRTSPContext *ctx);
+  void     (*wfd_keep_alive_fail)         (GstRTSPWFDClient *client);
 
   /*< private >*/
   gpointer _gst_reserved[GST_PADDING_LARGE];
