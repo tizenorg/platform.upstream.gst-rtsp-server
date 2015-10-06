@@ -237,13 +237,13 @@ gst_rtsp_wfd_client_class_init (GstRTSPWFDClientClass * klass)
       g_signal_new ("wfd-options-request", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstRTSPWFDClientClass,
           wfd_options_request), NULL, NULL, g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE, 2, GST_TYPE_RTSP_WFD_CLIENT, GST_TYPE_RTSP_CONTEXT);
+      G_TYPE_NONE, 1, GST_TYPE_RTSP_CONTEXT);
 
   gst_rtsp_client_wfd_signals[SIGNAL_WFD_GET_PARAMETER_REQUEST] =
       g_signal_new ("wfd-get-parameter-request", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstRTSPWFDClientClass,
           wfd_get_param_request), NULL, NULL, g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE, 2, GST_TYPE_RTSP_WFD_CLIENT, GST_TYPE_RTSP_CONTEXT);
+      G_TYPE_NONE, 1, GST_TYPE_RTSP_CONTEXT);
 
   gst_rtsp_client_wfd_signals[SIGNAL_WFD_KEEP_ALIVE_FAIL] =
       g_signal_new ("wfd-keep-alive-fail", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
@@ -1140,6 +1140,8 @@ handle_wfd_options_request (GstRTSPClient * client, GstRTSPContext * ctx)
   gchar *str = NULL;
   gchar *user_agent = NULL;
 
+  GstRTSPWFDClient *_client = GST_RTSP_WFD_CLIENT (client);
+
   options = GST_RTSP_OPTIONS |
       GST_RTSP_PAUSE |
       GST_RTSP_PLAY |
@@ -1177,7 +1179,7 @@ handle_wfd_options_request (GstRTSPClient * client, GstRTSPContext * ctx)
 
   GST_DEBUG_OBJECT (client, "Sent M2 response...");
 
-  g_signal_emit (client,
+  g_signal_emit (_client,
       gst_rtsp_client_wfd_signals[SIGNAL_WFD_OPTIONS_REQUEST], 0, ctx);
 
   return TRUE;
