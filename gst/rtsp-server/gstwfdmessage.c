@@ -65,6 +65,8 @@
 #include "gstwfdmessage.h"
 
 #define EDID_BLOCK_SIZE 128
+#define EDID_BLOCK_COUNT_MAX_SIZE 256
+#define MAX_PORT_SIZE 65535
 
 #define FREE_STRING(field)              g_free (field); (field) = NULL
 #define REPLACE_STRING(field, val)      FREE_STRING(field); (field) = g_strdup (val)
@@ -919,12 +921,12 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
           misc_params.frame_rate_control_support);
       if (msg->video_3d_formats->list->H264_codec.max_hres)
         g_string_append_printf (lines, " %04x",
-            msg->video_formats->list->H264_codec.max_hres);
+            msg->video_3d_formats->list->H264_codec.max_hres);
       else
         g_string_append_printf (lines, " none");
       if (msg->video_3d_formats->list->H264_codec.max_vres)
         g_string_append_printf (lines, " %04x",
-            msg->video_formats->list->H264_codec.max_vres);
+            msg->video_3d_formats->list->H264_codec.max_vres);
       else
         g_string_append_printf (lines, " none");
     } else {
@@ -955,11 +957,11 @@ gst_wfd_message_as_text (const GstWFDMessage * msg)
     g_string_append_printf (lines, GST_STRING_WFD_DISPLAY_EDID);
     g_string_append_printf (lines, ":");
     if (msg->display_edid->edid_supported) {
-      g_string_append_printf (lines, " %d", msg->display_edid->edid_supported);
-      if (msg->display_edid->edid_block_count)
-        g_string_append_printf (lines, " %d",
-            msg->display_edid->edid_block_count);
-      else
+      if (msg->display_edid->edid_block_count > 0 &&
+          msg->display_edid->edid_block_count <= EDID_BLOCK_COUNT_MAX_SIZE) {
+        g_string_append_printf (lines," %04x", msg->display_edid->edid_block_count);
+        g_string_append_printf(lines, " %s", msg->display_edid->edid_payload);
+      } else
         g_string_append_printf (lines, " none");
     } else {
       g_string_append_printf (lines, " none");
@@ -1735,14 +1737,16 @@ gst_wfd_message_set_display_edid (GstWFDMessage * msg,
   msg->display_edid->edid_supported = edid_supported;
   if (!edid_supported)
     return GST_WFD_OK;
-  msg->display_edid->edid_block_count = edid_blockcount;
-  if (edid_blockcount) {
-    msg->display_edid->edid_payload = g_malloc (128 * edid_blockcount);
-    if (!msg->display_edid->edid_payload)
-      memcpy (msg->display_edid->edid_payload, edid_playload,
-          128 * edid_blockcount);
+  if (edid_blockcount > 0 && edid_blockcount <= EDID_BLOCK_COUNT_MAX_SIZE) {
+    msg->display_edid->edid_block_count = edid_blockcount;
+    msg->display_edid->edid_payload = g_malloc(EDID_BLOCK_SIZE * edid_blockcount);
+    if (msg->display_edid->edid_payload)
+      memcpy(msg->display_edid->edid_payload, edid_playload, EDID_BLOCK_SIZE * edid_blockcount);
+    else
+      msg->display_edid->edid_supported = FALSE;
   } else
-    msg->display_edid->edid_payload = g_strdup ("none");
+    msg->display_edid->edid_supported = FALSE;
+
   return GST_WFD_OK;
 }
 
@@ -1752,25 +1756,25 @@ gst_wfd_message_get_display_edid (GstWFDMessage * msg,
     guint32 * edid_blockcount, gchar ** edid_playload)
 {
   g_return_val_if_fail (msg != NULL, GST_WFD_EINVAL);
+  g_return_val_if_fail (edid_supported != NULL, GST_WFD_EINVAL);
+  g_return_val_if_fail (edid_blockcount != NULL, GST_WFD_EINVAL);
+  g_return_val_if_fail (edid_playload != NULL, GST_WFD_EINVAL);
+
+  *edid_supported = FALSE;
   if (msg->display_edid) {
     if (msg->display_edid->edid_supported) {
       *edid_blockcount = msg->display_edid->edid_block_count;
-      if (msg->display_edid->edid_block_count) {
+      if (msg->display_edid->edid_block_count > 0 && msg->display_edid->edid_block_count <= EDID_BLOCK_COUNT_MAX_SIZE) {
         char *temp;
-        temp = g_malloc (EDID_BLOCK_SIZE * msg->display_edid->edid_block_count);
+        temp = g_malloc0(EDID_BLOCK_SIZE * msg->display_edid->edid_block_count);
         if (temp) {
-          memset (temp, 0,
-              EDID_BLOCK_SIZE * msg->display_edid->edid_block_count);
-          memcpy (temp, msg->display_edid->edid_payload,
-              EDID_BLOCK_SIZE * msg->display_edid->edid_block_count);
+          memcpy(temp, msg->display_edid->edid_payload, EDID_BLOCK_SIZE * msg->display_edid->edid_block_count);
           *edid_playload = temp;
           *edid_supported = TRUE;
         }
-      } else
-        *edid_playload = g_strdup ("none");
+      }
     }
-  } else
-    *edid_supported = FALSE;
+  }
   return GST_WFD_OK;
 }
 
@@ -1781,6 +1785,7 @@ gst_wfd_message_set_contentprotection_type (GstWFDMessage * msg,
 {
   char str[11] = { 0, };
   g_return_val_if_fail (msg != NULL, GST_WFD_EINVAL);
+  g_return_val_if_fail (TCPPort <= MAX_PORT_SIZE, GST_WFD_EINVAL);
 
   if (!msg->content_protection)
     msg->content_protection = g_new0 (GstWFDContentProtection, 1);
@@ -1803,6 +1808,7 @@ gst_wfd_message_get_contentprotection_type (GstWFDMessage * msg,
   g_return_val_if_fail (msg != NULL, GST_WFD_EINVAL);
   if (msg->content_protection && msg->content_protection->hdcp2_spec) {
     char *result = NULL;
+    char *ptr = NULL;
     if (!g_strcmp0 (msg->content_protection->hdcp2_spec->hdcpversion, "none")) {
       *hdcpversion = GST_WFD_HDCP_NONE;
       *TCPPort = 0;
@@ -1820,9 +1826,9 @@ gst_wfd_message_get_contentprotection_type (GstWFDMessage * msg,
       return GST_WFD_OK;
     }
 
-    result = strtok (msg->content_protection->hdcp2_spec->TCPPort, "=");
+    result = strtok_r (msg->content_protection->hdcp2_spec->TCPPort, "=", &ptr);
     while (result != NULL) {
-      result = strtok (NULL, "=");
+      result = strtok_r (NULL, "=", &ptr);
       *TCPPort = atoi (result);
       break;
     }
