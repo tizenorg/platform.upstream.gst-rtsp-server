@@ -614,6 +614,89 @@ create_error:
 }
 
 static gboolean
+_rtsp_media_factory_wfd_create_waylandsrc_bin (GstRTSPMediaFactoryWFD * factory,
+    GstBin * srcbin)
+{
+  GstElement *videosrc = NULL;
+  GstElement *vcaps = NULL;
+  gchar *vcodec = NULL;
+  GstElement *venc = NULL;
+  GstElement *vparse = NULL;
+  GstElement *vqueue = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+
+  priv = factory->priv;
+
+  GST_INFO_OBJECT (factory, "picked waylandsrc as video source");
+
+  videosrc = gst_element_factory_make ("waylandsrc", "videosrc");
+  if (NULL == videosrc) {
+    GST_ERROR_OBJECT (factory, "failed to create ximagesrc element");
+    goto create_error;
+  }
+
+  /* create video caps element */
+  vcaps = gst_element_factory_make ("capsfilter", "videocaps");
+  if (NULL == vcaps) {
+    GST_ERROR_OBJECT (factory, "failed to create video capsilfter element");
+    goto create_error;
+  }
+
+  g_object_set (G_OBJECT (vcaps), "caps",
+      gst_caps_new_simple ("video/x-raw",
+          "format", G_TYPE_STRING, "SN12",
+          "width", G_TYPE_INT, priv->video_width,
+          "height", G_TYPE_INT, priv->video_height,
+          "framerate", GST_TYPE_FRACTION, priv->video_framerate, 1, NULL),
+      NULL);
+
+  if (priv->video_codec == GST_WFD_VIDEO_H264)
+    vcodec = g_strdup (priv->video_encoder);
+  else {
+    GST_ERROR_OBJECT (factory, "Yet to support other than H264 format");
+    goto create_error;
+  }
+
+  venc = gst_element_factory_make (vcodec, "videoenc");
+  if (vcodec) g_free (vcodec);
+
+  if (!venc) {
+    GST_ERROR_OBJECT (factory, "failed to create video encoder element");
+    goto create_error;
+  }
+
+  g_object_set (venc, "aud", 0, NULL);
+  g_object_set (venc, "byte-stream", 1, NULL);
+  g_object_set (venc, "bitrate", 512, NULL);
+
+  vparse = gst_element_factory_make ("h264parse", "videoparse");
+  if (NULL == vparse) {
+    GST_ERROR_OBJECT (factory, "failed to create h264 parse element");
+    goto create_error;
+  }
+  g_object_set (vparse, "config-interval", 1, NULL);
+
+  vqueue = gst_element_factory_make ("queue", "video-queue");
+  if (!vqueue) {
+    GST_ERROR_OBJECT (factory, "failed to create video queue element");
+    goto create_error;
+  }
+
+  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  if (!gst_element_link_many (videosrc, vcaps, venc, vparse, vqueue, NULL)) {
+    GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
+    goto create_error;
+  }
+
+  priv->video_queue = vqueue;
+
+  return TRUE;
+
+create_error:
+  return FALSE;
+}
+
+static gboolean
 _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
     factory, GstBin * srcbin)
 {
@@ -931,6 +1014,12 @@ _rtsp_media_factory_wfd_create_srcbin (GstRTSPMediaFactoryWFD * factory)
       break;
     case GST_WFD_VSRC_VIDEOTESTSRC:
       if (!_rtsp_media_factory_wfd_create_videotest_bin (factory, srcbin)) {
+        GST_ERROR_OBJECT (factory, "failed to create videotestsrc bin...");
+        goto create_error;
+      }
+      break;
+    case GST_WFD_VSRC_WAYLANDSRC:
+      if (!_rtsp_media_factory_wfd_create_waylandsrc_bin (factory, srcbin)) {
         GST_ERROR_OBJECT (factory, "failed to create videotestsrc bin...");
         goto create_error;
       }
