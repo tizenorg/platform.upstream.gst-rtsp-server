@@ -155,6 +155,12 @@ static GstRTSPResult default_params_get (GstRTSPClient * client,
     GstRTSPContext * ctx);
 static gchar *default_make_path_from_uri (GstRTSPClient * client,
     const GstRTSPUrl * uri);
+static gboolean default_handle_options_request (GstRTSPClient * client,
+    GstRTSPContext * ctx);
+static gboolean default_handle_set_param_request (GstRTSPClient * client,
+    GstRTSPContext * ctx);
+static gboolean default_handle_get_param_request (GstRTSPClient * client,
+    GstRTSPContext * ctx);
 static void client_session_removed (GstRTSPSessionPool * pool,
     GstRTSPSession * session, GstRTSPClient * client);
 
@@ -180,6 +186,9 @@ gst_rtsp_client_class_init (GstRTSPClientClass * klass)
   klass->params_set = default_params_set;
   klass->params_get = default_params_get;
   klass->make_path_from_uri = default_make_path_from_uri;
+  klass->handle_options_request = default_handle_options_request;
+  klass->handle_set_param_request = default_handle_set_param_request;
+  klass->handle_get_param_request = default_handle_get_param_request;
 
   g_object_class_install_property (gobject_class, PROP_SESSION_POOL,
       g_param_spec_object ("session-pool", "Session Pool",
@@ -929,7 +938,7 @@ default_params_get (GstRTSPClient * client, GstRTSPContext * ctx)
 }
 
 static gboolean
-handle_get_param_request (GstRTSPClient * client, GstRTSPContext * ctx)
+default_handle_get_param_request (GstRTSPClient * client, GstRTSPContext * ctx)
 {
   GstRTSPResult res;
   guint8 *data;
@@ -966,7 +975,7 @@ bad_request:
 }
 
 static gboolean
-handle_set_param_request (GstRTSPClient * client, GstRTSPContext * ctx)
+default_handle_set_param_request (GstRTSPClient * client, GstRTSPContext * ctx)
 {
   GstRTSPResult res;
   guint8 *data;
@@ -1833,6 +1842,8 @@ handle_setup_request (GstRTSPClient * client, GstRTSPContext * ctx)
   if (media == NULL)
     goto media_not_found_no_reply;
 
+  /* FIXME-WFD : wfd url problem */
+#if 0
   if (path[matched] == '\0') {
     if (gst_rtsp_media_n_streams (media) == 1) {
       stream = gst_rtsp_media_get_stream (media, 0);
@@ -1848,6 +1859,12 @@ handle_setup_request (GstRTSPClient * client, GstRTSPContext * ctx)
     /* find the stream now using the control part */
     stream = gst_rtsp_media_find_stream (media, control);
   }
+#else
+  control = g_strdup ("stream=0");
+
+  /* find the stream now using the control part */
+  stream = gst_rtsp_media_find_stream (media, control);
+#endif
 
   if (stream == NULL)
     goto stream_not_found;
@@ -1944,6 +1961,10 @@ handle_setup_request (GstRTSPClient * client, GstRTSPContext * ctx)
   /* create and serialize the server transport */
   st = make_server_transport (client, media, ctx, ct);
   trans_str = gst_rtsp_transport_as_text (st);
+
+  /* FIXME-WFD : Temporarily force to set profile string */
+  trans_str = g_strjoinv ("RTP/AVP/UDP", g_strsplit (trans_str, "RTP/AVP", -1));
+
   gst_rtsp_transport_free (st);
 
   /* construct the response now */
@@ -2548,7 +2569,7 @@ unsuspend_failed:
 }
 
 static gboolean
-handle_options_request (GstRTSPClient * client, GstRTSPContext * ctx)
+default_handle_options_request (GstRTSPClient * client, GstRTSPContext * ctx)
 {
   GstRTSPMethod options;
   gchar *str;
@@ -2704,6 +2725,9 @@ handle_request (GstRTSPClient * client, GstRTSPMessage * request)
   GstRTSPMessage response = { 0 };
   gchar *unsupported_reqs = NULL;
   gchar *sessid;
+  GstRTSPClientClass *klass;
+
+  klass = GST_RTSP_CLIENT_GET_CLASS (client);
 
   if (!(ctx = gst_rtsp_context_get_current ())) {
     ctx = &sctx;
@@ -2828,7 +2852,7 @@ handle_request (GstRTSPClient * client, GstRTSPMessage * request)
   /* now see what is asked and dispatch to a dedicated handler */
   switch (method) {
     case GST_RTSP_OPTIONS:
-      handle_options_request (client, ctx);
+      klass->handle_options_request (client, ctx);
       break;
     case GST_RTSP_DESCRIBE:
       handle_describe_request (client, ctx);
@@ -2846,10 +2870,10 @@ handle_request (GstRTSPClient * client, GstRTSPMessage * request)
       handle_teardown_request (client, ctx);
       break;
     case GST_RTSP_SET_PARAMETER:
-      handle_set_param_request (client, ctx);
+      klass->handle_set_param_request (client, ctx);
       break;
     case GST_RTSP_GET_PARAMETER:
-      handle_get_param_request (client, ctx);
+      klass->handle_get_param_request (client, ctx);
       break;
     case GST_RTSP_ANNOUNCE:
       handle_announce_request (client, ctx);

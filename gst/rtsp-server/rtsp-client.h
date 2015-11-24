@@ -103,6 +103,9 @@ struct _GstRTSPClientClass {
   GstRTSPResult   (*params_set) (GstRTSPClient *client, GstRTSPContext *ctx);
   GstRTSPResult   (*params_get) (GstRTSPClient *client, GstRTSPContext *ctx);
   gchar *         (*make_path_from_uri) (GstRTSPClient *client, const GstRTSPUrl *uri);
+  gboolean        (*handle_options_request) (GstRTSPClient * client, GstRTSPContext * ctx);
+  gboolean        (*handle_set_param_request) (GstRTSPClient * client, GstRTSPContext * ctx);
+  gboolean        (*handle_get_param_request) (GstRTSPClient * client, GstRTSPContext * ctx);
 
   /* signals */
   void     (*closed)                  (GstRTSPClient *client);
@@ -129,7 +132,7 @@ struct _GstRTSPClientClass {
   gchar*   (*check_requirements)      (GstRTSPClient *client, GstRTSPContext *ctx, gchar ** arr);
 
   /*< private >*/
-  gpointer _gst_reserved[GST_PADDING_LARGE-6];
+  gpointer _gst_reserved[GST_PADDING_LARGE-9];
 };
 
 GType                 gst_rtsp_client_get_type          (void);

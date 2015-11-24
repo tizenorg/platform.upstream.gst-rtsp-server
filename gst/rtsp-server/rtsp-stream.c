@@ -1103,6 +1103,9 @@ again:
       inetaddr = g_inet_address_new_any (family);
   }
 
+  /* FIXME-WFD : Force to set 19000 as port number */
+  tmp_rtp = 19000;
+
   rtp_sockaddr = g_inet_socket_address_new (inetaddr, tmp_rtp);
   if (!g_socket_bind (rtp_socket, rtp_sockaddr, FALSE, NULL)) {
     g_object_unref (rtp_sockaddr);
@@ -1280,10 +1283,15 @@ alloc_ports (GstRTSPStream * stream)
       G_SOCKET_FAMILY_IPV4, priv->udpsrc_v4, priv->udpsink,
       &priv->server_port_v4, &priv->server_addr_v4);
 
+  /* FIXME-WFD : force to disable ipv6 mode in WFD mode */
+#if 0
   priv->have_ipv6 =
       alloc_ports_one_family (stream, priv->pool, priv->buffer_size,
       G_SOCKET_FAMILY_IPV6, priv->udpsrc_v6, priv->udpsink,
       &priv->server_port_v6, &priv->server_addr_v6);
+#else
+  priv->have_ipv6 = FALSE;
+#endif
 
   return priv->have_ipv4 || priv->have_ipv6;
 }
@@ -3152,6 +3160,21 @@ gst_rtsp_stream_get_current_seqnum (GstRTSPStream * stream)
   g_object_get (G_OBJECT (priv->payloader), "seqnum", &seqnum, NULL);
 
   return seqnum;
+}
+
+guint64
+gst_rtsp_stream_get_udp_sent_bytes (GstRTSPStream *stream)
+{
+  GstRTSPStreamPrivate *priv;
+  guint64 bytes = 0;
+
+  g_return_val_if_fail (GST_IS_RTSP_STREAM (stream), 0);
+
+  priv = stream->priv;
+
+  g_object_get (G_OBJECT (priv->udpsink[0]), "bytes-to-serve", &bytes, NULL);
+
+  return bytes;
 }
 
 /**
