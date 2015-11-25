@@ -155,6 +155,7 @@ gboolean          gst_rtsp_stream_query_stop       (GstRTSPStream * stream,
 
 void              gst_rtsp_stream_set_seqnum_offset          (GstRTSPStream *stream, guint16 seqnum);
 guint16           gst_rtsp_stream_get_current_seqnum          (GstRTSPStream *stream);
+guint64           gst_rtsp_stream_get_udp_sent_bytes          (GstRTSPStream *stream);
 void              gst_rtsp_stream_set_retransmission_time     (GstRTSPStream *stream, GstClockTime time);
 GstClockTime      gst_rtsp_stream_get_retransmission_time     (GstRTSPStream *stream);
 guint             gst_rtsp_stream_get_retransmission_pt       (GstRTSPStream * stream);

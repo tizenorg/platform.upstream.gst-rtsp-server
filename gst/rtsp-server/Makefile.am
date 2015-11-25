@@ -7,6 +7,7 @@ public_headers = \
 		rtsp-thread-pool.h \
 		rtsp-media.h \
 		rtsp-media-factory.h \
+		rtsp-media-factory-wfd.h \
 		rtsp-media-factory-uri.h \
 		rtsp-mount-points.h \
 		rtsp-permissions.h \
@@ -16,8 +17,11 @@ public_headers = \
 		rtsp-session-media.h \
 		rtsp-session-pool.h \
 		rtsp-token.h \
+		rtsp-client-wfd.h \
 		rtsp-client.h \
-		rtsp-server.h
+		rtsp-server-wfd.h \
+		rtsp-server.h \
+		gstwfdmessage.h
 
 c_sources = \
 	rtsp-auth.c \
@@ -28,6 +32,7 @@ c_sources = \
 	rtsp-thread-pool.c \
 	rtsp-media.c \
 	rtsp-media-factory.c \
+	rtsp-media-factory-wfd.c \
 	rtsp-media-factory-uri.c \
 	rtsp-mount-points.c \
 	rtsp-permissions.c \
@@ -37,7 +42,10 @@ c_sources = \
 	rtsp-session-media.c \
 	rtsp-session-pool.c \
 	rtsp-token.c \
+	gstwfdmessage.c \
+	rtsp-client-wfd.c \
 	rtsp-client.c \
+	rtsp-server-wfd.c \
 	rtsp-server.c
 
 noinst_HEADERS = 
