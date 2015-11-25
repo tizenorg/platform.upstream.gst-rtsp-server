@@ -317,7 +317,7 @@ gst_rtsp_session_pool_find (GstRTSPSessionPool * pool, const gchar * sessionid)
 static gchar *
 create_session_id (GstRTSPSessionPool * pool)
 {
-  gchar id[17];
+  gchar id[16];
   gint i;
 
   for (i = 0; i < 16; i++) {
@@ -325,9 +325,8 @@ create_session_id (GstRTSPSessionPool * pool)
         session_id_charset[g_random_int_range (0,
             G_N_ELEMENTS (session_id_charset))];
   }
-  id[16] = 0;
 
-  return g_uri_escape_string (id, NULL, FALSE);
+  return g_strndup (id, 16);
 }
 
 static GstRTSPSession *
@@ -471,7 +470,7 @@ gst_rtsp_session_pool_remove (GstRTSPSessionPool * pool, GstRTSPSession * sess)
 
 typedef struct
 {
-  GTimeVal now;
+  gint64 now_monotonic_time;
   GstRTSPSessionPool *pool;
   GList *removed;
 } CleanupData;
@@ -481,11 +480,13 @@ cleanup_func (gchar * sessionid, GstRTSPSession * sess, CleanupData * data)
 {
   gboolean expired;
 
-  expired = gst_rtsp_session_is_expired (sess, &data->now);
+  expired = gst_rtsp_session_is_expired_usec (sess, data->now_monotonic_time);
+
   if (expired) {
     GST_DEBUG ("session expired");
     data->removed = g_list_prepend (data->removed, g_object_ref (sess));
   }
+
   return expired;
 }
 
@@ -510,7 +511,8 @@ gst_rtsp_session_pool_cleanup (GstRTSPSessionPool * pool)
 
   priv = pool->priv;
 
-  g_get_current_time (&data.now);
+  data.now_monotonic_time = g_get_monotonic_time ();
+
   data.pool = pool;
   data.removed = NULL;
 
@@ -662,11 +664,12 @@ static void
 collect_timeout (gchar * sessionid, GstRTSPSession * sess, GstPoolSource * psrc)
 {
   gint timeout;
-  GTimeVal now;
+  gint64 now_monotonic_time;
 
-  g_get_current_time (&now);
+  now_monotonic_time = g_get_monotonic_time ();
 
-  timeout = gst_rtsp_session_next_timeout (sess, &now);
+  timeout = gst_rtsp_session_next_timeout_usec (sess, now_monotonic_time);
+
   GST_INFO ("%p: next timeout: %d", sess, timeout);
   if (psrc->timeout == -1 || timeout < psrc->timeout)
     psrc->timeout = timeout;

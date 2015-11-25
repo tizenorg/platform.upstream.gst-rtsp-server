@@ -1,14 +1,14 @@
-AC_PREREQ(2.62)
+AC_PREREQ(2.69)
 dnl initialize autoconf
 dnl when going to/from release please set the nano (fourth number) right !
 dnl releases only do Wall, cvs and prerelease does Werror too
-AC_INIT([GStreamer RTSP Server Library], [1.4.5],
+AC_INIT([GStreamer RTSP Server Library], [1.6.1],
     [http://bugzilla.gnome.org/enter_bug.cgi?product=GStreamer],
     [gst-rtsp-server])
 AG_GST_INIT
 
 dnl initialize automake
-AM_INIT_AUTOMAKE([-Wno-portability 1.11 no-dist-gzip dist-xz tar-ustar subdir-objects])
+AM_INIT_AUTOMAKE([-Wno-portability 1.14 no-dist-gzip dist-xz tar-ustar subdir-objects])
 
 dnl define PACKAGE_VERSION_* variables
 AS_VERSION
@@ -53,13 +53,13 @@ dnl      1.2.5 => 205
 dnl      1.10.9 (who knows) => 1009
 dnl
 dnl sets GST_LT_LDFLAGS
-AS_LIBTOOL(GST, 405, 0, 405)
+AS_LIBTOOL(GST, 601, 0, 601)
 
 dnl *** required versions of GStreamer stuff ***
-GST_REQ=1.4.0
-GSTPB_REQ=1.4.0
-GSTPG_REQ=1.4.0
-GSTPD_REQ=1.4.0
+GST_REQ=1.6.1
+GSTPB_REQ=1.6.1
+GSTPG_REQ=1.6.1
+GSTPD_REQ=1.6.1
 
 dnl *** autotools stuff ****
 
@@ -86,6 +86,8 @@ AG_GST_ARG_GCOV
 AG_GST_ARG_WITH_PKG_CONFIG_PATH
 AG_GST_ARG_WITH_PACKAGE_NAME
 AG_GST_ARG_WITH_PACKAGE_ORIGIN
+
+AG_GST_ARG_EXAMPLES
 
 AG_GST_PKG_CONFIG_PATH
 
@@ -315,6 +317,7 @@ dnl *** output files ***
 dnl keep this alphabetic per directory, please
 AC_CONFIG_FILES([
 Makefile
+gst-rtsp.spec
 common/Makefile
 common/m4/Makefile
 gst/Makefile

@@ -18,8 +18,7 @@
  */
 
 #include <gst/gst.h>
-#include <gst/rtsp/gstrtsprange.h>
-#include <gst/rtsp/gstrtspurl.h>
+#include <gst/rtsp/rtsp.h>
 #include <gio/gio.h>
 
 #ifndef __GST_RTSP_STREAM_H__
@@ -55,7 +54,8 @@ struct _GstRTSPStream {
 
   /*< private >*/
   GstRTSPStreamPrivate *priv;
-  gpointer _gst_reserved[GST_PADDING];};
+  gpointer _gst_reserved[GST_PADDING];
+};
 
 struct _GstRTSPStreamClass {
   GObjectClass parent_class;
@@ -67,10 +67,11 @@ struct _GstRTSPStreamClass {
 GType             gst_rtsp_stream_get_type         (void);
 
 GstRTSPStream *   gst_rtsp_stream_new              (guint idx, GstElement *payloader,
-                                                    GstPad *srcpad);
+                                                    GstPad *pad);
 guint             gst_rtsp_stream_get_index        (GstRTSPStream *stream);
 guint             gst_rtsp_stream_get_pt           (GstRTSPStream *stream);
 GstPad *          gst_rtsp_stream_get_srcpad       (GstRTSPStream *stream);
+GstPad *          gst_rtsp_stream_get_sinkpad      (GstRTSPStream *stream);
 
 void              gst_rtsp_stream_set_control      (GstRTSPStream *stream, const gchar *control);
 gchar *           gst_rtsp_stream_get_control      (GstRTSPStream *stream);
@@ -147,16 +148,24 @@ GSocket *         gst_rtsp_stream_get_rtcp_socket  (GstRTSPStream *stream,
 gboolean          gst_rtsp_stream_update_crypto    (GstRTSPStream * stream,
                                                     guint ssrc, GstCaps * crypto);
 
-
 gboolean          gst_rtsp_stream_query_position   (GstRTSPStream * stream,
                                                     gint64 * position);
 gboolean          gst_rtsp_stream_query_stop       (GstRTSPStream * stream,
                                                     gint64 * stop);
 
-void              gst_rtsp_stream_set_seqnum_offset   (GstRTSPStream *stream, guint16 seqnum);
-guint16           gst_rtsp_stream_get_current_seqnum  (GstRTSPStream *stream);
-guint64           gst_rtsp_stream_get_udp_sent_bytes  (GstRTSPStream *stream);
+void              gst_rtsp_stream_set_seqnum_offset          (GstRTSPStream *stream, guint16 seqnum);
+guint16           gst_rtsp_stream_get_current_seqnum          (GstRTSPStream *stream);
+guint64           gst_rtsp_stream_get_udp_sent_bytes          (GstRTSPStream *stream);
+void              gst_rtsp_stream_set_retransmission_time     (GstRTSPStream *stream, GstClockTime time);
+GstClockTime      gst_rtsp_stream_get_retransmission_time     (GstRTSPStream *stream);
+guint             gst_rtsp_stream_get_retransmission_pt       (GstRTSPStream * stream);
+void              gst_rtsp_stream_set_retransmission_pt       (GstRTSPStream * stream,
+                                                               guint rtx_pt);
+void              gst_rtsp_stream_set_buffer_size  (GstRTSPStream *stream, guint size);
+guint             gst_rtsp_stream_get_buffer_size  (GstRTSPStream *stream);
 
+void              gst_rtsp_stream_set_pt_map                 (GstRTSPStream * stream, guint pt, GstCaps * caps);
+GstElement *      gst_rtsp_stream_request_aux_sender         (GstRTSPStream * stream, guint sessid);
 /**
  * GstRTSPStreamTransportFilterFunc:
  * @stream: a #GstRTSPStream object

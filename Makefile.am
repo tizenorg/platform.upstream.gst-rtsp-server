@@ -1,23 +1,30 @@
 DISTCHECK_CONFIGURE_FLAGS=--enable-gtk-doc
 
+if BUILD_EXAMPLES
+SUBDIRS_EXAMPLES = examples
+else
+SUBDIRS_EXAMPLES =
+endif
+
 SUBDIRS = 		\
 	gst \
 	common \
-	examples \
 	pkgconfig \
+	docs \
+	$(SUBDIRS_EXAMPLES) \
 	tests
 
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = gst common pkgconfig docs examples tests
 
 EXTRA_DIST = \
 	ChangeLog autogen.sh depcomp \
 	AUTHORS COPYING NEWS README RELEASE REQUIREMENTS \
-	gst-rtsp-server.spec docs/design/gst-rtp-server-design \
+	gst-rtsp.spec docs/design/gst-rtp-server-design \
 	gst-rtsp-server.doap
 
 ACLOCAL_AMFLAGS = -I m4 -I common/m4
 
-DISTCLEANFILES = _stdint.h gst-rtsp-server.spec
+DISTCLEANFILES = _stdint.h gst-rtsp.spec
 
 include $(top_srcdir)/common/release.mak
 include $(top_srcdir)/common/po.mak
@@ -25,13 +32,17 @@ include $(top_srcdir)/common/po.mak
 include $(top_srcdir)/common/coverage/lcov.mak
 
 check-valgrind:
-	cd tests/check && make check-valgrind
+	$(MAKE) -C tests/check check-valgrind
 
 if HAVE_CHECK
 check-torture:
-	cd tests/check && make torture
+	$(MAKE) -C tests/check torture
+build-checks:
+	$(MAKE) -C tests/check  build-checks
 else
 check-torture:
+	true
+build-checks:
 	true
 endif
 

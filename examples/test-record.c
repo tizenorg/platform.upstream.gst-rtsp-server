@@ -1,5 +1,7 @@
 /* GStreamer
  * Copyright (C) 2008 Wim Taymans <wim.taymans at gmail.com>
+ * Copyright (C) 2015 Centricular Ltd
+ *     Author: Sebastian Dröge <sebastian@centricular.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -42,12 +44,17 @@ main (int argc, char *argv[])
   GError *error = NULL;
 
   optctx = g_option_context_new ("<launch line> - Test RTSP Server, Launch\n\n"
-      "Example: \"( videotestsrc ! x264enc ! rtph264pay name=pay0 pt=96 )\"");
+      "Example: \"( decodebin name=depay0 ! autovideosink )\"");
   g_option_context_add_main_entries (optctx, entries, NULL);
   g_option_context_add_group (optctx, gst_init_get_option_group ());
   if (!g_option_context_parse (optctx, &argc, &argv, &error)) {
     g_printerr ("Error parsing options: %s\n", error->message);
     return -1;
+  }
+
+  if (argc < 2) {
+    g_print ("%s\n", g_option_context_get_help (optctx, TRUE, NULL));
+    return 1;
   }
   g_option_context_free (optctx);
 
@@ -55,7 +62,6 @@ main (int argc, char *argv[])
 
   /* create a server instance */
   server = gst_rtsp_server_new ();
-  g_object_set (server, "service", port, NULL);
 
   /* get the mount points for this server, every server has a default object
    * that be used to map uri mount points to media factories */
@@ -63,10 +69,13 @@ main (int argc, char *argv[])
 
   /* make a media factory for a test stream. The default media factory can use
    * gst-launch syntax to create pipelines.
-   * any launch line works as long as it contains elements named pay%d. Each
-   * element with pay%d names will be a stream */
+   * any launch line works as long as it contains elements named depay%d. Each
+   * element with depay%d names will be a stream */
   factory = gst_rtsp_media_factory_new ();
+  gst_rtsp_media_factory_set_transport_mode (factory,
+      GST_RTSP_TRANSPORT_MODE_RECORD);
   gst_rtsp_media_factory_set_launch (factory, argv[1]);
+  gst_rtsp_media_factory_set_latency (factory, 2000);
 
   /* attach the test factory to the /test url */
   gst_rtsp_mount_points_add_factory (mounts, "/test", factory);

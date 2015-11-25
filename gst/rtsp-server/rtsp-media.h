@@ -18,8 +18,7 @@
  */
 
 #include <gst/gst.h>
-#include <gst/rtsp/gstrtsprange.h>
-#include <gst/rtsp/gstrtspurl.h>
+#include <gst/rtsp/rtsp.h>
 #include <gst/net/gstnet.h>
 
 #ifndef __GST_RTSP_MEDIA_H__
@@ -76,6 +75,21 @@ typedef enum {
   GST_RTSP_SUSPEND_MODE_PAUSE  = 1,
   GST_RTSP_SUSPEND_MODE_RESET  = 2
 } GstRTSPSuspendMode;
+
+/**
+ * GstRTSPTransportMode:
+ * @GST_RTSP_TRANSPORT_MODE_PLAY: Transport supports PLAY mode
+ * @GST_RTSP_TRANSPORT_MODE_RECORD: Transport supports RECORD mode
+ *
+ * The supported modes of the media.
+ */
+typedef enum {
+  GST_RTSP_TRANSPORT_MODE_PLAY    = 1,
+  GST_RTSP_TRANSPORT_MODE_RECORD  = 2,
+} GstRTSPTransportMode;
+
+#define GST_TYPE_RTSP_TRANSPORT_MODE (gst_rtsp_transport_mode_get_type())
+GType gst_rtsp_transport_mode_get_type (void);
 
 #define GST_TYPE_RTSP_SUSPEND_MODE (gst_rtsp_suspend_mode_get_type())
 GType gst_rtsp_suspend_mode_get_type (void);
@@ -149,8 +163,10 @@ struct _GstRTSPMediaClass {
   void            (*target_state)    (GstRTSPMedia *media, GstState state);
   void            (*new_state)       (GstRTSPMedia *media, GstState state);
 
+  gboolean        (*handle_sdp)      (GstRTSPMedia *media, GstSDPMessage *sdp);
+
   /*< private >*/
-  gpointer         _gst_reserved[GST_PADDING_LARGE];
+  gpointer         _gst_reserved[GST_PADDING_LARGE-1];
 };
 
 GType                 gst_rtsp_media_get_type         (void);
@@ -170,6 +186,9 @@ GstRTSPPermissions *  gst_rtsp_media_get_permissions  (GstRTSPMedia *media);
 void                  gst_rtsp_media_set_shared       (GstRTSPMedia *media, gboolean shared);
 gboolean              gst_rtsp_media_is_shared        (GstRTSPMedia *media);
 
+void                  gst_rtsp_media_set_transport_mode  (GstRTSPMedia *media, GstRTSPTransportMode mode);
+GstRTSPTransportMode  gst_rtsp_media_get_transport_mode  (GstRTSPMedia *media);
+
 void                  gst_rtsp_media_set_reusable     (GstRTSPMedia *media, gboolean reusable);
 gboolean              gst_rtsp_media_is_reusable      (GstRTSPMedia *media);
 
@@ -187,6 +206,12 @@ GstRTSPAddressPool *  gst_rtsp_media_get_address_pool (GstRTSPMedia *media);
 
 void                  gst_rtsp_media_set_buffer_size  (GstRTSPMedia *media, guint size);
 guint                 gst_rtsp_media_get_buffer_size  (GstRTSPMedia *media);
+
+void                  gst_rtsp_media_set_retransmission_time  (GstRTSPMedia *media, GstClockTime time);
+GstClockTime          gst_rtsp_media_get_retransmission_time  (GstRTSPMedia *media);
+
+void                  gst_rtsp_media_set_latency      (GstRTSPMedia *media, guint latency);
+guint                 gst_rtsp_media_get_latency      (GstRTSPMedia *media);
 
 void                  gst_rtsp_media_use_time_provider (GstRTSPMedia *media, gboolean time_provider);
 gboolean              gst_rtsp_media_is_time_provider  (GstRTSPMedia *media);
@@ -206,11 +231,14 @@ gboolean              gst_rtsp_media_unsuspend        (GstRTSPMedia *media);
 gboolean              gst_rtsp_media_setup_sdp        (GstRTSPMedia * media, GstSDPMessage * sdp,
                                                        GstSDPInfo * info);
 
+gboolean              gst_rtsp_media_handle_sdp (GstRTSPMedia * media, GstSDPMessage * sdp);
+
+
 /* creating streams */
 void                  gst_rtsp_media_collect_streams  (GstRTSPMedia *media);
 GstRTSPStream *       gst_rtsp_media_create_stream    (GstRTSPMedia *media,
                                                        GstElement *payloader,
-                                                       GstPad *srcpad);
+                                                       GstPad *pad);
 
 /* dealing with the media */
 GstClock *            gst_rtsp_media_get_clock        (GstRTSPMedia *media);
