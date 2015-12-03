@@ -106,6 +106,7 @@ struct _GstRTSPClientClass {
   gboolean        (*handle_options_request) (GstRTSPClient * client, GstRTSPContext * ctx);
   gboolean        (*handle_set_param_request) (GstRTSPClient * client, GstRTSPContext * ctx);
   gboolean        (*handle_get_param_request) (GstRTSPClient * client, GstRTSPContext * ctx);
+  gboolean        (*handle_play_request) (GstRTSPClient * client, GstRTSPContext * ctx);
 
   /* signals */
   void     (*closed)                  (GstRTSPClient *client);
@@ -132,7 +133,7 @@ struct _GstRTSPClientClass {
   gchar*   (*check_requirements)      (GstRTSPClient *client, GstRTSPContext *ctx, gchar ** arr);
 
   /*< private >*/
-  gpointer _gst_reserved[GST_PADDING_LARGE-9];
+  gpointer _gst_reserved[GST_PADDING_LARGE-10];
 };
 
 GType                 gst_rtsp_client_get_type          (void);

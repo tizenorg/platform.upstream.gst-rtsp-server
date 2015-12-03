@@ -161,6 +161,9 @@ static gboolean default_handle_set_param_request (GstRTSPClient * client,
     GstRTSPContext * ctx);
 static gboolean default_handle_get_param_request (GstRTSPClient * client,
     GstRTSPContext * ctx);
+static gboolean default_handle_play_request (GstRTSPClient * client,
+    GstRTSPContext * ctx);
+
 static void client_session_removed (GstRTSPSessionPool * pool,
     GstRTSPSession * session, GstRTSPClient * client);
 
@@ -189,6 +192,7 @@ gst_rtsp_client_class_init (GstRTSPClientClass * klass)
   klass->handle_options_request = default_handle_options_request;
   klass->handle_set_param_request = default_handle_set_param_request;
   klass->handle_get_param_request = default_handle_get_param_request;
+  klass->handle_play_request = default_handle_play_request;
 
   g_object_class_install_property (gobject_class, PROP_SESSION_POOL,
       g_param_spec_object ("session-pool", "Session Pool",
@@ -1127,7 +1131,7 @@ make_base_url (GstRTSPClient * client, GstRTSPUrl * url, const gchar * path)
 }
 
 static gboolean
-handle_play_request (GstRTSPClient * client, GstRTSPContext * ctx)
+default_handle_play_request (GstRTSPClient * client, GstRTSPContext * ctx)
 {
   GstRTSPSession *session;
   GstRTSPClientClass *klass;
@@ -2861,7 +2865,7 @@ handle_request (GstRTSPClient * client, GstRTSPMessage * request)
       handle_setup_request (client, ctx);
       break;
     case GST_RTSP_PLAY:
-      handle_play_request (client, ctx);
+      klass->handle_play_request (client, ctx);
       break;
     case GST_RTSP_PAUSE:
       handle_pause_request (client, ctx);
