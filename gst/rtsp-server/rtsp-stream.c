@@ -1103,9 +1103,6 @@ again:
       inetaddr = g_inet_address_new_any (family);
   }
 
-  /* FIXME-WFD : Force to set 19000 as port number */
-  tmp_rtp = 19000;
-
   rtp_sockaddr = g_inet_socket_address_new (inetaddr, tmp_rtp);
   if (!g_socket_bind (rtp_socket, rtp_sockaddr, FALSE, NULL)) {
     g_object_unref (rtp_sockaddr);
