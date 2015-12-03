@@ -2717,7 +2717,7 @@ void
 gst_rtsp_wfd_client_set_audio_freq(GstRTSPWFDClient *client, guint freq)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
-  g_return_val_if_fail (priv != NULL, 0);
+  g_return_if_fail (priv != NULL);
 
   priv->cFreq = freq;
 }
@@ -2726,7 +2726,7 @@ void
 gst_rtsp_wfd_client_set_edid_supported(GstRTSPWFDClient *client, gboolean supported)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
-  g_return_val_if_fail (priv != NULL, 0);
+  g_return_if_fail (priv != NULL);
 
   priv->edid_supported = supported;
 }
@@ -2735,7 +2735,7 @@ void
 gst_rtsp_wfd_client_set_edid_hresolution(GstRTSPWFDClient *client, guint32 reso)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
-  g_return_val_if_fail (priv != NULL, 0);
+  g_return_if_fail (priv != NULL);
 
   priv->edid_hres = reso;
 }
@@ -2744,7 +2744,7 @@ void
 gst_rtsp_wfd_client_set_edid_vresolution(GstRTSPWFDClient *client, guint32 reso)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
-  g_return_val_if_fail (priv != NULL, 0);
+  g_return_if_fail (priv != NULL);
 
   priv->edid_vres = reso;
 }
@@ -2753,7 +2753,7 @@ void
 gst_rtsp_wfd_client_set_protection_enabled(GstRTSPWFDClient *client, gboolean enable)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
-  g_return_val_if_fail (priv != NULL, 0);
+  g_return_if_fail (priv != NULL);
 
   priv->protection_enabled = enable;
 }
@@ -2761,7 +2761,7 @@ gst_rtsp_wfd_client_set_protection_enabled(GstRTSPWFDClient *client, gboolean en
 void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean flag)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
-  g_return_val_if_fail (priv != NULL, 0);
+  g_return_if_fail (priv != NULL);
 
   g_mutex_lock(&priv->keep_alive_lock);
   if (priv->keep_alive_flag == !(flag))

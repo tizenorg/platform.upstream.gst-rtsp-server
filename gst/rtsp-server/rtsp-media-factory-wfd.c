@@ -740,11 +740,12 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
   }
 
   venc = gst_element_factory_make (vcodec, "videoenc");
+  if (vcodec) g_free (vcodec);
+
   if (!venc) {
     GST_ERROR_OBJECT (factory, "failed to create video encoder element");
     goto create_error;
   }
-  if (vcodec) g_free (vcodec);
 
   g_object_set (venc, "bitrate", priv->video_bitrate, NULL);
   g_object_set (venc, "byte-stream", 1, NULL);
