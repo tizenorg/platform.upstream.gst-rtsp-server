@@ -1846,8 +1846,6 @@ handle_setup_request (GstRTSPClient * client, GstRTSPContext * ctx)
   if (media == NULL)
     goto media_not_found_no_reply;
 
-  /* FIXME-WFD : wfd url problem */
-#if 0
   if (path[matched] == '\0') {
     if (gst_rtsp_media_n_streams (media) == 1) {
       stream = gst_rtsp_media_get_stream (media, 0);
@@ -1863,12 +1861,6 @@ handle_setup_request (GstRTSPClient * client, GstRTSPContext * ctx)
     /* find the stream now using the control part */
     stream = gst_rtsp_media_find_stream (media, control);
   }
-#else
-  control = g_strdup ("stream=0");
-
-  /* find the stream now using the control part */
-  stream = gst_rtsp_media_find_stream (media, control);
-#endif
 
   if (stream == NULL)
     goto stream_not_found;

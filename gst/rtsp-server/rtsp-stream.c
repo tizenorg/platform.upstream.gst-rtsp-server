@@ -1280,15 +1280,10 @@ alloc_ports (GstRTSPStream * stream)
       G_SOCKET_FAMILY_IPV4, priv->udpsrc_v4, priv->udpsink,
       &priv->server_port_v4, &priv->server_addr_v4);
 
-  /* FIXME-WFD : force to disable ipv6 mode in WFD mode */
-#if 0
   priv->have_ipv6 =
       alloc_ports_one_family (stream, priv->pool, priv->buffer_size,
       G_SOCKET_FAMILY_IPV6, priv->udpsrc_v6, priv->udpsink,
       &priv->server_port_v6, &priv->server_addr_v6);
-#else
-  priv->have_ipv6 = FALSE;
-#endif
 
   return priv->have_ipv4 || priv->have_ipv6;
 }
