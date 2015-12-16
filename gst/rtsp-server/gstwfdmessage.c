@@ -1808,7 +1808,7 @@ gst_wfd_message_get_contentprotection_type (GstWFDMessage * msg,
   g_return_val_if_fail (msg != NULL, GST_WFD_EINVAL);
   if (msg->content_protection && msg->content_protection->hdcp2_spec) {
     char *result = NULL;
-    char *ptr = NULL;
+    char *ptr[2];
     if (!g_strcmp0 (msg->content_protection->hdcp2_spec->hdcpversion, "none")) {
       *hdcpversion = GST_WFD_HDCP_NONE;
       *TCPPort = 0;
@@ -1826,11 +1826,15 @@ gst_wfd_message_get_contentprotection_type (GstWFDMessage * msg,
       return GST_WFD_OK;
     }
 
-    result = strtok_r (msg->content_protection->hdcp2_spec->TCPPort, "=", &ptr);
-    while (result != NULL) {
-      result = strtok_r (NULL, "=", &ptr);
-      *TCPPort = atoi (result);
-      break;
+    if (msg->content_protection->hdcp2_spec->TCPPort) {
+      result = strtok_r (msg->content_protection->hdcp2_spec->TCPPort, "=", &ptr[0]);
+      while (result != NULL) {
+        result = strtok_r (NULL, "=", &ptr[1]);
+        *TCPPort = atoi (result);
+        break;
+      }
+    } else {
+      *TCPPort = 0;
     }
   } else
     *hdcpversion = GST_WFD_HDCP_NONE;
