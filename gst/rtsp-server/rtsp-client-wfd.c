@@ -148,6 +148,7 @@ enum
   SIGNAL_WFD_OPTIONS_REQUEST,
   SIGNAL_WFD_GET_PARAMETER_REQUEST,
   SIGNAL_WFD_KEEP_ALIVE_FAIL,
+  SIGNAL_WFD_PLAYING_DONE,
   SIGNAL_WFD_LAST
 };
 
@@ -248,6 +249,11 @@ gst_rtsp_wfd_client_class_init (GstRTSPWFDClientClass * klass)
   gst_rtsp_client_wfd_signals[SIGNAL_WFD_KEEP_ALIVE_FAIL] =
       g_signal_new ("wfd-keep-alive-fail", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET (GstRTSPWFDClientClass, wfd_keep_alive_fail), NULL, NULL,
+      g_cclosure_marshal_generic, G_TYPE_NONE, 0, G_TYPE_NONE);
+
+  gst_rtsp_client_wfd_signals[SIGNAL_WFD_PLAYING_DONE] =
+      g_signal_new ("wfd-playing-done", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET (GstRTSPWFDClientClass, wfd_playing_done), NULL, NULL,
       g_cclosure_marshal_generic, G_TYPE_NONE, 0, G_TYPE_NONE);
 
   klass->wfd_options_request = wfd_options_request_done;
@@ -944,8 +950,11 @@ handle_wfd_play (GstRTSPClient * client, GstRTSPContext * ctx)
   g_return_if_fail (priv != NULL);
 
   wfd_set_keep_alive_condition(_client);
-  
+
   priv->stats_timer_id = g_timeout_add (2000, wfd_display_rtp_stats, _client);
+
+  g_signal_emit (client,
+      gst_rtsp_client_wfd_signals[SIGNAL_WFD_PLAYING_DONE], 0, NULL);
 }
 
 static void
