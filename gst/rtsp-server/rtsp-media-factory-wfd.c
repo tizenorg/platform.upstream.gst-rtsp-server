@@ -337,6 +337,7 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
   GstElement *audio_convert = NULL;
   GstElement *aqueue = NULL;
   GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstStructure *audio_properties_name = NULL;
 
   guint channels = 0;
   gboolean is_enc_req = TRUE;
@@ -360,7 +361,9 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
   GST_INFO_OBJECT (factory, "audio_do_timestamp  : %d",
       priv->audio_do_timestamp);
 
-  g_object_set (audiosrc, "device", priv->audio_device, NULL);
+  audio_properties_name = gst_structure_new_from_string(priv->audio_device);
+
+  g_object_set (audiosrc, "stream-properties", audio_properties_name, NULL);
   g_object_set (audiosrc, "buffer-time", (gint64) priv->audio_buffer_time,
       NULL);
   g_object_set (audiosrc, "latency-time", (gint64) priv->audio_latency_time,
@@ -499,11 +502,12 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
 
   priv->audio_queue = aqueue;
   if (acodec) g_free (acodec);
-
+  if (gst_structure_free) gst_structure_free(audio_properties_name);
   return TRUE;
 
 create_error:
   if (acodec) g_free (acodec);
+  if (gst_structure_free) gst_structure_free(audio_properties_name);
   return FALSE;
 }
 
