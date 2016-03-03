@@ -502,12 +502,12 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
 
   priv->audio_queue = aqueue;
   if (acodec) g_free (acodec);
-  if (gst_structure_free) gst_structure_free(audio_properties_name);
+  if (audio_properties_name) gst_structure_free(audio_properties_name);
   return TRUE;
 
 create_error:
   if (acodec) g_free (acodec);
-  if (gst_structure_free) gst_structure_free(audio_properties_name);
+  if (audio_properties_name) gst_structure_free(audio_properties_name);
   return FALSE;
 }
 
