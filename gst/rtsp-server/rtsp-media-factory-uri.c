@@ -435,6 +435,9 @@ autoplug_continue_cb (GstElement * uribin, GstPad * pad, GstCaps * caps,
       GST_DEBUG_PAD_NAME (pad), caps);
 
   data = g_object_get_data (G_OBJECT (element), factory_key);
+  if (data == NULL) {
+    goto no_data;
+  }
 
   if (!(factory = find_payloader (data->factory, caps)))
     goto no_factory;
@@ -452,6 +455,12 @@ no_factory:
   {
     /* no payloader, continue autoplugging */
     GST_DEBUG ("no payloader found");
+    return TRUE;
+  }
+no_data:
+  {
+    /* no data with factory_key */
+    GST_ERROR ("data is null");
     return TRUE;
   }
 }
@@ -473,6 +482,10 @@ pad_added_cb (GstElement * uribin, GstPad * pad, GstElement * element)
 
   /* link the element now and expose the pad */
   data = g_object_get_data (G_OBJECT (element), factory_key);
+  if (data == NULL) {
+    goto no_data;
+  }
+
   urifact = data->factory;
   priv = urifact->priv;
 
@@ -578,6 +591,12 @@ no_payloader:
     g_free (padname);
     gst_caps_unref (caps);
     gst_object_unref (pad);
+    return;
+  }
+no_data:
+  {
+    /* no data with factory_key */
+    GST_ERROR ("data is null");
     return;
   }
 }

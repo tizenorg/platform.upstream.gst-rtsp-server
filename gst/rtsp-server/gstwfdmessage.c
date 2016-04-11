@@ -1391,7 +1391,6 @@ gst_wfd_message_set_supported_audio_format (GstWFDMessage * msg,
     GstWFDAudioFormats a_codec,
     guint a_freq, guint a_channels, guint a_bitwidth, guint32 a_latency)
 {
-  guint temp = a_codec;
   guint i = 0;
   guint pcm = 0, aac = 0, ac3 = 0;
 
@@ -1401,10 +1400,14 @@ gst_wfd_message_set_supported_audio_format (GstWFDMessage * msg,
     msg->audio_codecs = g_new0 (GstWFDAudioCodeclist, 1);
 
   if (a_codec != GST_WFD_AUDIO_UNKNOWN) {
-    while (temp) {
+
+    if (a_codec & GST_WFD_AUDIO_LPCM)
       msg->audio_codecs->count++;
-      temp >>= 1;
-    }
+    if (a_codec & GST_WFD_AUDIO_AAC)
+      msg->audio_codecs->count++;
+    if (a_codec & GST_WFD_AUDIO_AC3)
+      msg->audio_codecs->count++;
+
     msg->audio_codecs->list =
         g_new0 (GstWFDAudioCodec, msg->audio_codecs->count);
     for (; i < msg->audio_codecs->count; i++) {

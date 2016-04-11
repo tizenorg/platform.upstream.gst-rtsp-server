@@ -318,6 +318,9 @@ do_loop (GstRTSPThread * thread)
   GstRTSPThreadPool *pool;
 
   pool = gst_mini_object_get_qdata (GST_MINI_OBJECT (thread), thread_pool);
+  if (pool == NULL) {
+    goto no_pool;
+  }
   priv = pool->priv;
 
   klass = GST_RTSP_THREAD_POOL_GET_CLASS (pool);
@@ -339,6 +342,13 @@ do_loop (GstRTSPThread * thread)
   gst_rtsp_thread_unref (thread);
 
   return NULL;
+
+no_pool:
+  {
+    /* no data with factory_key */
+    GST_ERROR ("pool is null");
+    return NULL;
+  }
 }
 
 /**
