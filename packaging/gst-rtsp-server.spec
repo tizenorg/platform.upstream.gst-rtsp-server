@@ -1,7 +1,7 @@
 Name:       gst-rtsp-server
 Summary:    Multimedia Framework Library
 Version:    1.6.1
-Release:    0
+Release:    1
 Url:        http://gstreamer.freedesktop.org/
 Group:      System/Libraries
 License:    LGPL-2.0+
