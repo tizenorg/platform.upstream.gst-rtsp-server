@@ -1161,6 +1161,8 @@ handle_wfd_options_request (GstRTSPClient * client, GstRTSPContext * ctx)
 
   gst_rtsp_message_add_header (ctx->response, GST_RTSP_HDR_PUBLIC, str);
   g_free (str);
+  g_free (tmp);
+
   str = NULL;
 
   res =
@@ -1773,6 +1775,9 @@ gst_prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
 
   /* initialize the request */
   res = gst_rtsp_message_init_request (request, method, url);
+  if (method == GST_RTSP_GET_PARAMETER || GST_RTSP_SET_PARAMETER) {
+    g_free(url);
+  }
   if (res < 0) {
     GST_ERROR ("init request failed");
     return res;
@@ -2138,6 +2143,7 @@ prepare_response (GstRTSPWFDClient * client, GstRTSPMessage * request,
 
       gst_rtsp_message_add_header (response, GST_RTSP_HDR_PUBLIC, str);
       g_free (str);
+      g_free (tmp);
       str = NULL;
       res =
           gst_rtsp_message_get_header (request, GST_RTSP_HDR_USER_AGENT,
@@ -2415,10 +2421,12 @@ handle_M16_message (GstRTSPWFDClient * client)
   res = gst_rtsp_message_init_request (&request, GST_RTSP_GET_PARAMETER, url_str);
   if (res < 0) {
     GST_ERROR ("init request failed");
+    g_free(url_str);
     return FALSE;
   }
 
   gst_send_request (client, NULL, &request);
+  g_free(url_str);
   return GST_RTSP_OK;
 }
 
