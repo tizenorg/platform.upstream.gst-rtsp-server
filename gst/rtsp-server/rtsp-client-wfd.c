@@ -1168,6 +1168,7 @@ handle_wfd_options_request (GstRTSPClient * client, GstRTSPContext * ctx)
 
   gst_rtsp_message_add_header (ctx->response, GST_RTSP_HDR_PUBLIC, str);
   g_free (str);
+  g_free (tmp);
   str = NULL;
 
   res =
@@ -1782,6 +1783,7 @@ prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
   res = gst_rtsp_message_init_request (request, method, url);
   if (res < 0) {
     GST_ERROR ("init request failed");
+    g_free (url);
     return res;
   }
 
@@ -1813,6 +1815,7 @@ prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
           "text/parameters");
       if (res < 0) {
         GST_ERROR ("Failed to add header");
+        g_free (url);
         return res;
       }
 
@@ -1837,6 +1840,7 @@ prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
       }
 
       g_free (msg);
+      g_free (url);
       break;
     }
 
@@ -1876,6 +1880,7 @@ prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
       }
 
       g_free (msg);
+      g_free (url);
       break;
     }
 
@@ -1886,6 +1891,7 @@ prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
   return res;
 
 error:
+  g_free (url);
   return GST_RTSP_ERROR;
 }
 
@@ -2144,6 +2150,8 @@ prepare_response (GstRTSPWFDClient * client, GstRTSPMessage * request,
           gst_rtsp_status_as_text (GST_RTSP_STS_OK), request);
 
       gst_rtsp_message_add_header (response, GST_RTSP_HDR_PUBLIC, str);
+
+      g_free (tmp);
       g_free (str);
       str = NULL;
       res =
@@ -2422,10 +2430,12 @@ handle_M16_message (GstRTSPWFDClient * client)
   res = gst_rtsp_message_init_request (&request, GST_RTSP_GET_PARAMETER, url_str);
   if (res < 0) {
     GST_ERROR ("init request failed");
+    g_free (url_str);
     return FALSE;
   }
 
   send_request (client, NULL, &request);
+  g_free (url_str);
   return GST_RTSP_OK;
 }
 
