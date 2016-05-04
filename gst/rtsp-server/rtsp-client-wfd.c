@@ -187,13 +187,6 @@ static gboolean wfd_configure_client_media (GstRTSPClient * client, GstRTSPMedia
 GstRTSPResult prepare_trigger_request (GstRTSPWFDClient * client,
     GstRTSPMessage * request, GstWFDTriggerType trigger_type, gchar * url);
 
-GstRTSPResult prepare_request (GstRTSPWFDClient * client,
-    GstRTSPMessage * request, GstRTSPMethod method, gchar * url);
-
-void
-send_request (GstRTSPWFDClient * client, GstRTSPSession * session,
-    GstRTSPMessage * request);
-
 GstRTSPResult
 prepare_response (GstRTSPWFDClient * client, GstRTSPMessage * request,
     GstRTSPMessage * response, GstRTSPMethod method);
@@ -1753,7 +1746,7 @@ error:
 }
 
 /**
-* prepare_request:
+* gst_prepare_request:
 * @client: client object
 * @request : requst message to be prepared
 * @method : RTSP method of the request
@@ -1766,7 +1759,7 @@ error:
 * Returns: a #GstRTSPResult.
 */
 GstRTSPResult
-prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
+gst_prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
     GstRTSPMethod method, gchar * url)
 {
   GstRTSPResult res = GST_RTSP_OK;
@@ -2070,7 +2063,7 @@ error:
 
 
 void
-send_request (GstRTSPWFDClient * client, GstRTSPSession * session,
+gst_send_request (GstRTSPWFDClient * client, GstRTSPSession * session,
     GstRTSPMessage * request)
 {
   GstRTSPResult res = GST_RTSP_OK;
@@ -2196,7 +2189,7 @@ handle_M1_message (GstRTSPWFDClient * client)
   GstRTSPResult res = GST_RTSP_OK;
   GstRTSPMessage request = { 0 };
 
-  res = prepare_request (client, &request, GST_RTSP_OPTIONS, (gchar *) "*");
+  res = gst_prepare_request (client, &request, GST_RTSP_OPTIONS, (gchar *) "*");
   if (GST_RTSP_OK != res) {
     GST_ERROR_OBJECT (client, "Failed to prepare M1 request....\n");
     return res;
@@ -2204,7 +2197,7 @@ handle_M1_message (GstRTSPWFDClient * client)
 
   GST_DEBUG_OBJECT (client, "Sending M1 request.. (OPTIONS request)");
 
-  send_request (client, NULL, &request);
+  gst_send_request (client, NULL, &request);
 
   return res;
 }
@@ -2245,7 +2238,7 @@ handle_M3_message (GstRTSPWFDClient * client)
     goto error;
   }
 
-  res = prepare_request (client, &request, GST_RTSP_GET_PARAMETER, url_str);
+  res = gst_prepare_request (client, &request, GST_RTSP_GET_PARAMETER, url_str);
   if (GST_RTSP_OK != res) {
     GST_ERROR_OBJECT (client, "Failed to prepare M3 request....\n");
     goto error;
@@ -2253,7 +2246,7 @@ handle_M3_message (GstRTSPWFDClient * client)
 
   GST_DEBUG_OBJECT (client, "Sending GET_PARAMETER request message (M3)...");
 
-  send_request (client, NULL, &request);
+  gst_send_request (client, NULL, &request);
 
   return res;
 
@@ -2287,7 +2280,7 @@ handle_M4_message (GstRTSPWFDClient * client)
     goto error;
   }
 
-  res = prepare_request (client, &request, GST_RTSP_SET_PARAMETER, url_str);
+  res = gst_prepare_request (client, &request, GST_RTSP_SET_PARAMETER, url_str);
   if (GST_RTSP_OK != res) {
     GST_ERROR_OBJECT (client, "Failed to prepare M4 request....\n");
     goto error;
@@ -2295,7 +2288,7 @@ handle_M4_message (GstRTSPWFDClient * client)
 
   GST_DEBUG_OBJECT (client, "Sending SET_PARAMETER request message (M4)...");
 
-  send_request (client, NULL, &request);
+  gst_send_request (client, NULL, &request);
 
   return res;
 
@@ -2338,7 +2331,7 @@ gst_rtsp_wfd_client_trigger_request (GstRTSPWFDClient * client,
 
   GST_DEBUG_OBJECT (client, "Sending trigger request message...: %d", type);
 
-  send_request (client, NULL, &request);
+  gst_send_request (client, NULL, &request);
 
   return res;
 
@@ -2417,7 +2410,7 @@ wfd_ckeck_keep_alive_response (gpointer userdata)
 }
 
 /*Sending keep_alive (M16) message.
-  Without calling prepare_request function.*/
+  Without calling gst_prepare_request function.*/
 static GstRTSPResult
 handle_M16_message (GstRTSPWFDClient * client)
 {
@@ -2434,7 +2427,7 @@ handle_M16_message (GstRTSPWFDClient * client)
     return FALSE;
   }
 
-  send_request (client, NULL, &request);
+  gst_send_request (client, NULL, &request);
   g_free (url_str);
   return GST_RTSP_OK;
 }

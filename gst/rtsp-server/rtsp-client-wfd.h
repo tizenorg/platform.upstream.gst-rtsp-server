@@ -135,6 +135,10 @@ GstRTSPResult         gst_rtsp_wfd_client_set_video_native_resolution (
 		                      GstRTSPWFDClient * client, guint64 native_reso);
 GstRTSPResult         gst_rtsp_wfd_client_set_audio_codec (
 		                      GstRTSPWFDClient * client, guint8 audio_codec);
+GstRTSPResult         gst_prepare_request (GstRTSPWFDClient * client,
+                          GstRTSPMessage * request, GstRTSPMethod method, gchar * url);
+void                  gst_send_request (GstRTSPWFDClient * client,
+                          GstRTSPSession * session, GstRTSPMessage * request);
 
 guint     gst_rtsp_wfd_client_get_audio_codec(GstRTSPWFDClient *client);
 guint     gst_rtsp_wfd_client_get_audio_freq(GstRTSPWFDClient *client);
