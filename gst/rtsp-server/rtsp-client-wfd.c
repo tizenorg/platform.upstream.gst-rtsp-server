@@ -2760,6 +2760,24 @@ gst_rtsp_wfd_client_set_protection_enabled(GstRTSPWFDClient *client, gboolean en
   priv->protection_enabled = enable;
 }
 
+void
+gst_rtsp_wfd_client_set_hdcp_version(GstRTSPWFDClient *client, GstWFDHDCPProtection version)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->hdcp_version = version;
+}
+
+void
+gst_rtsp_wfd_client_set_hdcp_port(GstRTSPWFDClient *client, guint32 port)
+{
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  g_return_if_fail (priv != NULL);
+
+  priv->hdcp_tcpport = port;
+}
+
 void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean flag)
 {
   GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
