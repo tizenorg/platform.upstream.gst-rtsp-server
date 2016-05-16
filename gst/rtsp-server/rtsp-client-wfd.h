@@ -172,6 +172,8 @@ void gst_rtsp_wfd_client_set_edid_supported(GstRTSPWFDClient *client, gboolean s
 void gst_rtsp_wfd_client_set_edid_hresolution(GstRTSPWFDClient *client, guint32 reso);
 void gst_rtsp_wfd_client_set_edid_vresolution(GstRTSPWFDClient *client, guint32 reso);
 void gst_rtsp_wfd_client_set_protection_enabled(GstRTSPWFDClient *client, gboolean enable);
+void gst_rtsp_wfd_client_set_hdcp_version(GstRTSPWFDClient *client, GstWFDHDCPProtection version);
+void gst_rtsp_wfd_client_set_hdcp_port(GstRTSPWFDClient *client, guint32 port);
 void gst_rtsp_wfd_client_set_keep_alive_flag(GstRTSPWFDClient *client, gboolean flag);
 void gst_rtsp_wfd_client_set_aud_codec(GstRTSPWFDClient *client, guint acodec);
 void gst_rtsp_wfd_client_set_audio_channels(GstRTSPWFDClient *client, guint channels);
