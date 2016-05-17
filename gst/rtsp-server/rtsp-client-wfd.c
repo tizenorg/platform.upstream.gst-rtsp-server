@@ -1775,9 +1775,11 @@ gst_prepare_request (GstRTSPWFDClient * client, GstRTSPMessage * request,
 
   /* initialize the request */
   res = gst_rtsp_message_init_request (request, method, url);
-  if (method == GST_RTSP_GET_PARAMETER || GST_RTSP_SET_PARAMETER) {
+
+  if (method == GST_RTSP_GET_PARAMETER || method == GST_RTSP_SET_PARAMETER) {
     g_free(url);
   }
+
   if (res < 0) {
     GST_ERROR ("init request failed");
     return res;
