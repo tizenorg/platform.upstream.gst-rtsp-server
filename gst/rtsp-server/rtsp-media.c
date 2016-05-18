@@ -196,6 +196,7 @@ static gboolean default_handle_message (GstRTSPMedia * media,
     GstMessage * message);
 static void finish_unprepare (GstRTSPMedia * media);
 static gboolean default_prepare (GstRTSPMedia * media, GstRTSPThread * thread);
+static gboolean default_start_preroll (GstRTSPMedia * media);
 static gboolean default_unprepare (GstRTSPMedia * media);
 static gboolean default_suspend (GstRTSPMedia * media);
 static gboolean default_unsuspend (GstRTSPMedia * media);
@@ -208,6 +209,7 @@ static GstElement *default_create_rtpbin (GstRTSPMedia * media);
 static gboolean default_setup_sdp (GstRTSPMedia * media, GstSDPMessage * sdp,
     GstSDPInfo * info);
 static gboolean default_handle_sdp (GstRTSPMedia * media, GstSDPMessage * sdp);
+static gboolean default_start_prepare (GstRTSPMedia * media);
 
 static gboolean wait_preroll (GstRTSPMedia * media);
 
@@ -364,6 +366,7 @@ gst_rtsp_media_class_init (GstRTSPMediaClass * klass)
 
   klass->handle_message = default_handle_message;
   klass->prepare = default_prepare;
+  klass->start_preroll = default_start_preroll;
   klass->unprepare = default_unprepare;
   klass->suspend = default_suspend;
   klass->unsuspend = default_unsuspend;
@@ -373,6 +376,7 @@ gst_rtsp_media_class_init (GstRTSPMediaClass * klass)
   klass->create_rtpbin = default_create_rtpbin;
   klass->setup_sdp = default_setup_sdp;
   klass->handle_sdp = default_handle_sdp;
+  klass->start_prepare = default_start_prepare;
 }
 
 static void
@@ -2394,7 +2398,7 @@ struct _DynPaySignalHandlers
 };
 
 static gboolean
-start_preroll (GstRTSPMedia * media)
+default_start_preroll (GstRTSPMedia * media)
 {
   GstRTSPMediaPrivate *priv = media->priv;
   GstStateChangeReturn ret;
@@ -2481,11 +2485,14 @@ request_aux_sender (GstElement * rtpbin, guint sessid, GstRTSPMedia * media)
 }
 
 static gboolean
-start_prepare (GstRTSPMedia * media)
+default_start_prepare (GstRTSPMedia * media)
 {
   GstRTSPMediaPrivate *priv = media->priv;
+  GstRTSPMediaClass *klass;
   guint i;
   GList *walk;
+
+  klass = GST_RTSP_MEDIA_GET_CLASS (media);
 
   /* link streams we already have, other streams might appear when we have
    * dynamic elements */
@@ -2532,8 +2539,9 @@ start_prepare (GstRTSPMedia * media)
     }
   }
 
-  if (!start_preroll (media))
-    goto preroll_failed;
+  if (klass->start_preroll)
+    if(!klass->start_preroll (media))
+      goto preroll_failed;
 
   return FALSE;
 
@@ -2603,8 +2611,9 @@ default_prepare (GstRTSPMedia * media, GstRTSPThread * thread)
 
   /* do remainder in context */
   source = g_idle_source_new ();
-  g_source_set_callback (source, (GSourceFunc) start_prepare,
-    g_object_ref (media), (GDestroyNotify) g_object_unref);
+  if(klass->start_prepare)
+    g_source_set_callback (source, (GSourceFunc) klass->start_prepare,
+      g_object_ref (media), (GDestroyNotify) g_object_unref);
   g_source_attach (source, context);
   g_source_unref (source);
 
@@ -3821,6 +3830,9 @@ static gboolean
 default_unsuspend (GstRTSPMedia * media)
 {
   GstRTSPMediaPrivate *priv = media->priv;
+  GstRTSPMediaClass *klass;
+
+  klass = GST_RTSP_MEDIA_GET_CLASS (media);
 
   switch (priv->suspend_mode) {
     case GST_RTSP_SUSPEND_MODE_NONE:
@@ -3832,8 +3844,9 @@ default_unsuspend (GstRTSPMedia * media)
     case GST_RTSP_SUSPEND_MODE_RESET:
     {
       gst_rtsp_media_set_status (media, GST_RTSP_MEDIA_STATUS_PREPARING);
-      if (!start_preroll (media))
-        goto start_failed;
+      if (klass->start_preroll)
+        if(!klass->start_preroll (media))
+          goto start_failed;
       g_rec_mutex_unlock (&priv->state_lock);
 
       if (!wait_preroll (media))
