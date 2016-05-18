@@ -142,6 +142,7 @@ struct _GstRTSPMediaClass {
   /* vmethods */
   gboolean        (*handle_message)  (GstRTSPMedia *media, GstMessage *message);
   gboolean        (*prepare)         (GstRTSPMedia *media, GstRTSPThread *thread);
+  gboolean        (*start_preroll)         (GstRTSPMedia *media);
   gboolean        (*unprepare)       (GstRTSPMedia *media);
   gboolean        (*suspend)         (GstRTSPMedia *media);
   gboolean        (*unsuspend)       (GstRTSPMedia *media);
@@ -152,6 +153,7 @@ struct _GstRTSPMediaClass {
   GstElement *    (*create_rtpbin)   (GstRTSPMedia *media);
   gboolean        (*setup_rtpbin)    (GstRTSPMedia *media, GstElement *rtpbin);
   gboolean        (*setup_sdp)       (GstRTSPMedia *media, GstSDPMessage *sdp, GstSDPInfo *info);
+  gboolean        (*start_prepare)   (GstRTSPMedia *media);
 
   /* signals */
   void            (*new_stream)      (GstRTSPMedia *media, GstRTSPStream * stream);
