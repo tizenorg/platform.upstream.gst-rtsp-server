@@ -122,6 +122,9 @@ struct _GstRTSPWFDClientPrivate
   guint32 crtp_port0;
   guint32 crtp_port1;
 
+  gboolean direct_streaming_supported;
+  gint direct_streaming_state;
+
   gboolean protection_enabled;
   GstWFDHDCPProtection hdcp_version;
   guint32 hdcp_tcpport;
@@ -195,6 +198,8 @@ static GstRTSPResult handle_M1_message (GstRTSPWFDClient * client);
 static GstRTSPResult handle_M3_message (GstRTSPWFDClient * client);
 static GstRTSPResult handle_M4_message (GstRTSPWFDClient * client);
 static GstRTSPResult handle_M16_message (GstRTSPWFDClient * client);
+
+static GstRTSPResult handle_M4_direct_streaming_message (GstRTSPWFDClient * client);
 
 G_DEFINE_TYPE (GstRTSPWFDClient, gst_rtsp_wfd_client, GST_TYPE_RTSP_CLIENT);
 
@@ -278,6 +283,9 @@ gst_rtsp_wfd_client_init (GstRTSPWFDClient * client)
   priv->stats_timer_id = -1;
   priv->rtcp_stats_enabled = FALSE;
   memset (&priv->stats, 0x00, sizeof (GstRTSPClientRTPStats));
+
+  priv->direct_streaming_supported = FALSE;
+  priv->direct_streaming_state = 0;
 
   GST_INFO_OBJECT (client, "Client is initialized");
 }
@@ -1016,6 +1024,10 @@ handle_wfd_response (GstRTSPClient * client, GstRTSPContext * ctx)
         }
       }
 
+      if (msg->direct_video_formats) {
+        priv->direct_streaming_supported = TRUE;
+      }
+
       /* Get the Video formats supported by WFDSink */
       wfd_res =
           gst_wfd_message_get_supported_video_format (msg, &priv->cvCodec,
@@ -1356,6 +1368,7 @@ typedef enum
   M3_REQ_MSG,
   M3_RES_MSG,
   M4_REQ_MSG,
+  M4_DS_REQ_MSG,
   M4_RES_MSG,
   M5_REQ_MSG,
   TEARDOWN_TRIGGER,
@@ -1506,6 +1519,27 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
       goto error;
     }
 
+    /* set the supported audio formats by the WFD server for direct streaming */
+    wfd_res =
+        gst_wfd_message_set_supported_direct_audio_format (msg, GST_WFD_AUDIO_UNKNOWN,
+        GST_WFD_FREQ_UNKNOWN, GST_WFD_CHANNEL_UNKNOWN, 0, 0);
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client,
+          "Failed to set supported audio formats for direct streaming on wfd message...");
+      goto error;
+    }
+
+    /* set the supported Video formats by the WFD server for direct streaming */
+    wfd_res =
+        gst_wfd_message_set_supported_direct_video_format (msg, GST_WFD_VIDEO_UNKNOWN,
+        GST_WFD_VIDEO_CEA_RESOLUTION, GST_WFD_CEA_UNKNOWN, GST_WFD_CEA_UNKNOWN,
+        GST_WFD_VESA_UNKNOWN, GST_WFD_HH_UNKNOWN, GST_WFD_H264_UNKNOWN_PROFILE,
+        GST_WFD_H264_LEVEL_UNKNOWN, 0, 0, 0, 0, 0, 0);
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client,
+          "Failed to set supported video formats for direct streaming on wfd message...");
+      goto error;
+    }
     wfd_res = gst_wfd_message_set_display_edid (msg, 0, 0, NULL);
     if (wfd_res != GST_WFD_OK) {
       GST_ERROR_OBJECT (client,
@@ -1633,6 +1667,16 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
       goto error;
     }
 
+    if (priv->direct_streaming_supported) {
+      wfd_res =
+        gst_wfd_message_set_preferred_direct_audio_format (msg, taudiocodec, taudiofreq,
+            taudiochannels, priv->cBitwidth, priv->caLatency);
+      if (wfd_res != GST_WFD_OK) {
+        GST_ERROR_OBJECT (priv, "Failed to set preffered audio formats for direct streaming...");
+        goto error;
+      }
+    }
+
     /* Set the preffered video formats */
     priv->cvCodec = GST_WFD_VIDEO_H264;
     priv->cProfile = tcProfile = GST_WFD_H264_BASE_PROFILE;
@@ -1696,6 +1740,20 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
       goto error;
     }
 
+    if (priv->direct_streaming_supported) {
+      wfd_res =
+        gst_wfd_message_set_preferred_direct_video_format (msg, priv->cvCodec,
+            priv->video_native_resolution, GST_WFD_CEA_UNKNOWN, tcCEAResolution,
+            tcVESAResolution, tcHHResolution, tcProfile, tcLevel, priv->cvLatency,
+            priv->cMaxWidth, priv->cMaxHeight, priv->cmin_slice_size,
+            priv->cslice_enc_params, priv->cframe_rate_control);
+
+      if (wfd_res != GST_WFD_OK) {
+        GST_ERROR_OBJECT (client, "Failed to set preffered video formats for direct streaming...");
+        goto error;
+      }
+    }
+
     /* set the preffered RTP ports for the WFD server */
     wfd_res =
         gst_wfd_messge_set_prefered_rtp_ports (msg, GST_WFD_RTSP_TRANS_RTP,
@@ -1703,6 +1761,175 @@ _set_wfd_message_body (GstRTSPWFDClient * client, GstWFDMessageType msg_type,
     if (wfd_res != GST_WFD_OK) {
       GST_ERROR_OBJECT (client,
           "Failed to set supported video formats on wfd message...");
+      goto error;
+    }
+
+    *data = gst_wfd_message_as_text (msg);
+    if (*data == NULL) {
+      GST_ERROR_OBJECT (client, "Failed to get wfd message as text...");
+      goto error;
+    } else {
+      *len = strlen (*data);
+    }
+  } else if (msg_type == M4_DS_REQ_MSG) {
+    GstRTSPUrl *url = NULL;
+
+    GstRTSPClient *parent_client = GST_RTSP_CLIENT_CAST (client);
+    GstRTSPConnection *connection =
+        gst_rtsp_client_get_connection (parent_client);
+
+    /* Parameters for the preffered audio formats */
+    GstWFDAudioFormats taudiocodec = GST_WFD_AUDIO_UNKNOWN;
+    GstWFDAudioFreq taudiofreq = GST_WFD_FREQ_UNKNOWN;
+    GstWFDAudioChannels taudiochannels = GST_WFD_CHANNEL_UNKNOWN;
+
+    /* Parameters for the preffered video formats */
+    GstWFDVideoCEAResolution tcCEAResolution = GST_WFD_CEA_UNKNOWN;
+    GstWFDVideoVESAResolution tcVESAResolution = GST_WFD_VESA_UNKNOWN;
+    GstWFDVideoHHResolution tcHHResolution = GST_WFD_HH_UNKNOWN;
+    GstWFDVideoH264Profile tcProfile;
+    GstWFDVideoH264Level tcLevel;
+    guint64 resolution_supported = 0;
+
+    url = gst_rtsp_connection_get_url (connection);
+    if (url == NULL) {
+      GST_ERROR_OBJECT (client, "Failed to get connection URL");
+      return;
+    }
+
+    /* create M4 for direct streaming request to be sent */
+    wfd_res = gst_wfd_message_new (&msg);
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client, "Failed to create wfd message...");
+      goto error;
+    }
+
+    wfd_res = gst_wfd_message_init (msg);
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client, "Failed to init wfd message...");
+      goto error;
+    }
+
+    g_string_append_printf (buf, "rtsp://");
+
+    if (priv->host_address) {
+      g_string_append (buf, priv->host_address);
+    } else {
+      GST_ERROR_OBJECT (client, "Failed to get host address");
+      if (buf) g_string_free (buf, TRUE);
+      goto error;
+    }
+
+    g_string_append_printf (buf, "/wfd1.0/streamid=0");
+    wfd_res =
+        gst_wfd_message_set_presentation_url (msg, g_string_free (buf, FALSE),
+        NULL);
+
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client, "Failed to set presentation url");
+      goto error;
+    }
+
+    taudiocodec = wfd_get_prefered_audio_codec (priv->audio_codec, priv->caCodec);
+    priv->caCodec = taudiocodec;
+    if (!_set_negotiated_audio_codec(client, priv->caCodec)) {
+      GST_ERROR_OBJECT (client, "Failed to set negotiated "
+          "audio codec to media factory...");
+    }
+
+    if (priv->cFreq & GST_WFD_FREQ_48000)
+      taudiofreq = GST_WFD_FREQ_48000;
+    else if (priv->cFreq & GST_WFD_FREQ_44100)
+      taudiofreq = GST_WFD_FREQ_44100;
+    priv->cFreq = taudiofreq;
+
+    /* TODO-WFD: Currently only 2 channels is present */
+    if (priv->cChanels & GST_WFD_CHANNEL_8)
+      taudiochannels = GST_WFD_CHANNEL_2;
+    else if (priv->cChanels & GST_WFD_CHANNEL_6)
+      taudiochannels = GST_WFD_CHANNEL_2;
+    else if (priv->cChanels & GST_WFD_CHANNEL_4)
+      taudiochannels = GST_WFD_CHANNEL_2;
+    else if (priv->cChanels & GST_WFD_CHANNEL_2)
+      taudiochannels = GST_WFD_CHANNEL_2;
+    priv->cChanels = taudiochannels;
+
+    wfd_res =
+      gst_wfd_message_set_preferred_direct_audio_format (msg, taudiocodec, taudiofreq,
+          taudiochannels, priv->cBitwidth, priv->caLatency);
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (priv, "Failed to set preffered audio formats for direct streaming...");
+      goto error;
+    }
+
+    /* Set the preffered video formats */
+    priv->cvCodec = GST_WFD_VIDEO_H264;
+    priv->cProfile = tcProfile = GST_WFD_H264_BASE_PROFILE;
+    priv->cLevel = tcLevel = GST_WFD_H264_LEVEL_3_1;
+
+    resolution_supported = priv->video_resolution_supported;
+
+    /* TODO-WFD: Need to verify this logic
+       if(priv->edid_supported) {
+       if (priv->edid_hres < 1920) resolution_supported = resolution_supported & 0x8C7F;
+       if (priv->edid_hres < 1280) resolution_supported = resolution_supported & 0x1F;
+       if (priv->edid_hres < 720) resolution_supported = resolution_supported & 0x01;
+       }
+     */
+
+    if (priv->video_native_resolution == GST_WFD_VIDEO_CEA_RESOLUTION) {
+      tcCEAResolution =
+          wfd_get_prefered_resolution (resolution_supported,
+          priv->cCEAResolution, priv->video_native_resolution, &priv->cMaxWidth,
+          &priv->cMaxHeight, &priv->cFramerate, &priv->cInterleaved);
+      GST_DEBUG
+          ("wfd negotiated resolution: %08x, width: %d, height: %d, framerate: %d, interleaved: %d",
+          tcCEAResolution, priv->cMaxWidth, priv->cMaxHeight, priv->cFramerate,
+          priv->cInterleaved);
+    } else if (priv->video_native_resolution == GST_WFD_VIDEO_VESA_RESOLUTION) {
+      tcVESAResolution =
+          wfd_get_prefered_resolution (resolution_supported,
+          priv->cVESAResolution, priv->video_native_resolution,
+          &priv->cMaxWidth, &priv->cMaxHeight, &priv->cFramerate,
+          &priv->cInterleaved);
+      GST_DEBUG
+          ("wfd negotiated resolution: %08x, width: %d, height: %d, framerate: %d, interleaved: %d",
+          tcVESAResolution, priv->cMaxWidth, priv->cMaxHeight, priv->cFramerate,
+          priv->cInterleaved);
+    } else if (priv->video_native_resolution == GST_WFD_VIDEO_HH_RESOLUTION) {
+      tcHHResolution =
+          wfd_get_prefered_resolution (resolution_supported,
+          priv->cHHResolution, priv->video_native_resolution, &priv->cMaxWidth,
+          &priv->cMaxHeight, &priv->cFramerate, &priv->cInterleaved);
+      GST_DEBUG
+          ("wfd negotiated resolution: %08x, width: %d, height: %d, framerate: %d, interleaved: %d",
+          tcHHResolution, priv->cMaxWidth, priv->cMaxHeight, priv->cFramerate,
+          priv->cInterleaved);
+    }
+
+    if (!_set_negotiated_resolution(client, priv->cMaxWidth,
+          priv->cMaxHeight)) {
+      GST_ERROR_OBJECT (client, "Failed to set negotiated "
+          "resolution to media factory...");
+    }
+
+    wfd_res =
+      gst_wfd_message_set_preferred_direct_video_format (msg, priv->cvCodec,
+          priv->video_native_resolution, GST_WFD_CEA_UNKNOWN, tcCEAResolution,
+          tcVESAResolution, tcHHResolution, tcProfile, tcLevel, priv->cvLatency,
+          priv->cMaxWidth, priv->cMaxHeight, priv->cmin_slice_size,
+          priv->cslice_enc_params, priv->cframe_rate_control);
+
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client, "Failed to set preffered video formats for direct streaming...");
+      goto error;
+    }
+
+    wfd_res =
+      gst_wfd_message_set_direct_streaming_mode (msg, TRUE);
+
+    if (wfd_res != GST_WFD_OK) {
+      GST_ERROR_OBJECT (client, "Failed to set preffered video formats for direct streaming...");
       goto error;
     }
 
@@ -2986,4 +3213,186 @@ gst_rtsp_wfd_client_set_rtp_port1(GstRTSPWFDClient *client, guint32 port)
   g_return_if_fail (priv != NULL);
 
   priv->crtp_port1 = port;
+}
+
+static void
+direct_stream_end_cb (GstRTSPMediaFactoryWFD *factory, void *user_data)
+{
+  GstRTSPWFDClient *client = GST_RTSP_WFD_CLIENT_CAST (user_data);
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  GstRTSPResult res = GST_RTSP_OK;
+
+  priv->direct_streaming_state = 0;
+  res = handle_M4_message (client);
+
+  if (res != GST_RTSP_OK) {
+    GST_ERROR_OBJECT (client, "Failed to send message for direct streaming");
+  }
+}
+
+GstRTSPResult
+gst_rtsp_wfd_client_set_direct_streaming(GstRTSPWFDClient * client,
+    gint direct_streaming, gchar *urisrc)
+{
+  GstRTSPClient *parent_client = GST_RTSP_CLIENT_CAST (client);
+  GstRTSPWFDClientPrivate *priv = GST_RTSP_WFD_CLIENT_GET_PRIVATE (client);
+  GstRTSPResult res = GST_RTSP_OK;
+
+  GstRTSPMediaFactory *factory = NULL;
+  GstRTSPMountPoints *mount_points = NULL;
+  gchar *path = NULL;
+  gint matched = 0;
+
+  if (priv->direct_streaming_supported == FALSE) {
+    GST_ERROR_OBJECT (client, "Direct streaming not supported by client");
+    return GST_RTSP_ERROR;
+  }
+
+  if (priv->direct_streaming_state == direct_streaming) {
+    GST_DEBUG_OBJECT (client, "Direct streaming state not changed");
+    return res;
+  }
+
+  if (!(mount_points = gst_rtsp_client_get_mount_points (parent_client))) {
+    res = GST_RTSP_ERROR;
+    GST_ERROR_OBJECT (client, "Failed to set direct streaing: no mount points...");
+    goto no_mount_points;
+  }
+
+  path = g_strdup(WFD_MOUNT_POINT);
+  if (!path) {
+    res = GST_RTSP_ERROR;
+    GST_ERROR_OBJECT (client, "Failed to set direct streaing: no path...");
+    goto no_path;
+  }
+
+  if (!(factory = gst_rtsp_mount_points_match (mount_points,
+          path, &matched))) {
+    GST_ERROR_OBJECT (client, "Failed to set direct streaing: no factory...");
+    res = GST_RTSP_ERROR;
+    goto no_factory;
+  }
+
+  g_signal_connect_object (GST_RTSP_MEDIA_FACTORY_WFD_CAST (factory), "direct-stream-end",
+      G_CALLBACK (direct_stream_end_cb), client, 0);
+
+  res = gst_rtsp_media_factory_wfd_set_direct_streaming (factory,
+      direct_streaming, urisrc);
+
+  if (res != GST_RTSP_OK) {
+    GST_ERROR_OBJECT (client, "Failed to create direct streaming pipeline");
+    goto no_pipe;
+  }
+
+  if (direct_streaming) {
+    res = handle_M4_direct_streaming_message (client);
+
+    if (res != GST_RTSP_OK) {
+      GST_ERROR_OBJECT (client, "Failed to send message for direct streaming");
+      goto no_pipe;
+    }
+  }
+
+  priv->direct_streaming_state = direct_streaming;
+
+no_pipe:
+  g_object_unref(factory);
+no_factory:
+  g_free(path);
+no_path:
+  g_object_unref(mount_points);
+no_mount_points:
+  return res;
+}
+
+/**
+* prepare_request:
+* @client: client object
+* @request : requst message to be prepared
+* @url : url need to be in the request
+*
+* Prepares request based on @method & @message_type
+*
+* Returns: a #GstRTSPResult.
+*/
+static GstRTSPResult
+prepare_direct_streaming_request (GstRTSPWFDClient * client, GstRTSPMessage * request)
+{
+  GstRTSPResult res = GST_RTSP_OK;
+  gchar *str = NULL;
+  gchar *url = NULL;
+  gchar *msg = NULL;
+  guint msglen = 0;
+  GString *msglength;
+
+  GstRTSPMethod method = GST_RTSP_SET_PARAMETER;
+
+  url = g_strdup ("rtsp://localhost/wfd1.0");
+
+  GST_DEBUG_OBJECT (client, "Preparing request for direct streaming");
+
+  /* initialize the request */
+  res = gst_rtsp_message_init_request (request, method, url);
+  if (res < 0) {
+    GST_ERROR ("init request failed");
+    return res;
+  }
+
+  /* add content type */
+  res =
+    gst_rtsp_message_add_header (request, GST_RTSP_HDR_CONTENT_TYPE,
+        "text/parameters");
+  if (res != GST_RTSP_OK) {
+    GST_ERROR_OBJECT (client, "Failed to add header to rtsp request...");
+    goto error;
+  }
+
+  _set_wfd_message_body (client, M4_DS_REQ_MSG, &msg, &msglen);
+  msglength = g_string_new ("");
+  g_string_append_printf (msglength, "%d", msglen);
+  GST_DEBUG ("M4 for direct streaming server side message body: %s", msg);
+
+  /* add content-length type */
+  res =
+    gst_rtsp_message_add_header (request, GST_RTSP_HDR_CONTENT_LENGTH,
+        g_string_free (msglength, FALSE));
+  if (res != GST_RTSP_OK) {
+    GST_ERROR_OBJECT (client, "Failed to add header to rtsp message...");
+    goto error;
+  }
+
+  res = gst_rtsp_message_set_body (request, (guint8 *) msg, msglen);
+  if (res != GST_RTSP_OK) {
+    GST_ERROR_OBJECT (client, "Failed to add header to rtsp message...");
+    goto error;
+  }
+
+  g_free (msg);
+
+  return res;
+
+error:
+  return GST_RTSP_ERROR;
+}
+
+static GstRTSPResult
+handle_M4_direct_streaming_message (GstRTSPWFDClient * client)
+{
+  GstRTSPResult res = GST_RTSP_OK;
+  GstRTSPMessage request = { 0 };
+
+  res = prepare_direct_streaming_request (client, &request);
+  if (GST_RTSP_OK != res) {
+    GST_ERROR_OBJECT (client, "Failed to prepare M4 request....\n");
+    goto error;
+  }
+
+  GST_DEBUG_OBJECT (client, "Sending SET_PARAMETER request message for direct streaming (M4)...");
+
+  send_request (client, NULL, &request);
+
+  return res;
+
+error:
+  return res;
 }

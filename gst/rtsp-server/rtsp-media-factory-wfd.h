@@ -103,6 +103,7 @@ struct _GstRTSPMediaFactoryWFDClass
       GstRTSPMedia * media);
   void (*media_configure) (GstRTSPMediaFactoryWFD * factory,
       GstRTSPMedia * media);
+  void (*direct_stream_end) (GstRTSPMediaFactoryWFD * factory);
 
   /*< private > */
   gpointer _gst_reserved[GST_PADDING_LARGE];
@@ -126,6 +127,8 @@ void gst_rtsp_media_factory_wfd_set_negotiated_resolution (GstRTSPMediaFactory *
    guint32 width, guint32 height);
 void gst_rtsp_media_factory_wfd_set_audio_codec (GstRTSPMediaFactory *factory,
     guint audio_codec);
+gint gst_rtsp_media_factory_wfd_set_direct_streaming(GstRTSPMediaFactory *factory,
+    gint direct_streaming, gchar *filesrc);
 
 G_END_DECLS
 #endif /* __GST_RTSP_MEDIA_FACTORY_WFD_H__ */

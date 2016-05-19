@@ -81,6 +81,7 @@ GstRTSPResult         gst_rtsp_wfd_server_trigger_request      (GstRTSPServer *s
 GstRTSPResult         gst_rtsp_wfd_server_set_supported_reso (GstRTSPWFDServer *server, guint64 supported_reso);
 GstRTSPResult         gst_rtsp_wfd_server_set_video_native_reso    (GstRTSPWFDServer *server, guint64 native_reso);
 GstRTSPResult         gst_rtsp_wfd_server_set_audio_codec    (GstRTSPWFDServer *server, guint8 audio_codec);
+GstRTSPResult         gst_rtsp_wfd_server_set_direct_streaming (GstRTSPWFDServer *server, gint direct_streaming, gchar *urisrc);
 
 #if 0
 void                  gst_rtsp_server_set_address          (GstRTSPServer *server, const gchar *address);

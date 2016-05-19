@@ -37,6 +37,8 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+
 #include "rtsp-media-factory-wfd.h"
 #include "gstwfdmessage.h"
 
@@ -46,6 +48,30 @@
 #define GST_RTSP_MEDIA_FACTORY_WFD_GET_LOCK(f)       (&(GST_RTSP_MEDIA_FACTORY_WFD_CAST(f)->priv->lock))
 #define GST_RTSP_MEDIA_FACTORY_WFD_LOCK(f)           (g_mutex_lock(GST_RTSP_MEDIA_FACTORY_WFD_GET_LOCK(f)))
 #define GST_RTSP_MEDIA_FACTORY_WFD_UNLOCK(f)         (g_mutex_unlock(GST_RTSP_MEDIA_FACTORY_WFD_GET_LOCK(f)))
+
+typedef struct _GstRTPSMediaWFDTypeFindResult GstRTPSMediaWFDTypeFindResult;
+
+struct _GstRTPSMediaWFDTypeFindResult{
+  gint h264_found;
+  gint aac_found;
+  gint ac3_found;
+  GstElementFactory *demux_fact;
+  GstElementFactory *src_fact;
+};
+
+typedef struct _GstRTSPMediaWFDDirectPipelineData GstRTSPMediaWFDDirectPipelineData;
+
+struct _GstRTSPMediaWFDDirectPipelineData {
+  GstBin *pipeline;
+  GstElement *ap;
+  GstElement *vp;
+  GstElement *aq;
+  GstElement *vq;
+  GstElement *tsmux;
+  GstElement *mux_fs;
+  gchar *uri;
+};
+
 
 struct _GstRTSPMediaFactoryWFDPrivate
 {
@@ -66,6 +92,7 @@ struct _GstRTSPMediaFactoryWFDPrivate
   guint video_framerate;
   guint video_enc_skip_inbuf_value;
   GstElement *video_queue;
+  GstBin *video_srcbin;
 
   gchar *audio_device;
   gchar *audio_encoder_aac;
@@ -78,6 +105,20 @@ struct _GstRTSPMediaFactoryWFDPrivate
   guint8 audio_freq;
   guint8 audio_bitrate;
   GstElement *audio_queue;
+  GstBin *audio_srcbin;
+
+  GMutex direct_lock;
+  GCond direct_cond;
+  GType decodebin_type;
+  GstBin *discover_pipeline;
+  GstRTPSMediaWFDTypeFindResult res;
+  GstRTSPMediaWFDDirectPipelineData *direct_pipe;
+  GstBin *stream_bin;
+  GstElement *mux;
+  GstElement *mux_queue;
+  GstElement *pay;
+  GstElement *stub_fs;
+  GMainLoop *discover_loop;
 
   guint64 video_resolution_supported;
 
@@ -106,11 +147,14 @@ enum
 {
   SIGNAL_MEDIA_CONSTRUCTED,
   SIGNAL_MEDIA_CONFIGURE,
+  SIGNAL_DIRECT_STREAMING_END,
   SIGNAL_LAST
 };
 
 GST_DEBUG_CATEGORY_STATIC (rtsp_media_wfd_debug);
 #define GST_CAT_DEFAULT rtsp_media_wfd_debug
+
+static guint gst_rtsp_media_factory_wfd_signals[SIGNAL_LAST] = { 0 };
 
 static void gst_rtsp_media_factory_wfd_get_property (GObject * object,
     guint propid, GValue * value, GParamSpec * pspec);
@@ -142,6 +186,12 @@ gst_rtsp_media_factory_wfd_class_init (GstRTSPMediaFactoryWFDClass * klass)
   gobject_class->get_property = gst_rtsp_media_factory_wfd_get_property;
   gobject_class->set_property = gst_rtsp_media_factory_wfd_set_property;
   gobject_class->finalize = gst_rtsp_media_factory_wfd_finalize;
+
+  gst_rtsp_media_factory_wfd_signals[SIGNAL_DIRECT_STREAMING_END] =
+      g_signal_new ("direct-stream-end", G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstRTSPMediaFactoryWFDClass,
+          direct_stream_end), NULL, NULL, g_cclosure_marshal_generic,
+      G_TYPE_NONE, 0, G_TYPE_NONE);
 
   factory_class->construct = rtsp_media_factory_wfd_construct;
   factory_class->create_element = rtsp_media_factory_wfd_create_element;
@@ -228,6 +278,7 @@ gst_rtsp_media_factory_wfd_init (GstRTSPMediaFactoryWFD * factory)
   priv->video_height = 480;
   priv->video_framerate = 30;
   priv->video_enc_skip_inbuf_value = 5;
+  priv->video_srcbin = NULL;
 
   priv->audio_device = g_strdup ("alsa_output.1.analog-stereo.monitor");
   priv->audio_codec = GST_WFD_AUDIO_AAC;
@@ -238,6 +289,18 @@ gst_rtsp_media_factory_wfd_init (GstRTSPMediaFactoryWFD * factory)
   priv->audio_do_timestamp = FALSE;
   priv->audio_channels = GST_WFD_CHANNEL_2;
   priv->audio_freq = GST_WFD_FREQ_48000;
+  priv->audio_srcbin = NULL;
+
+  g_mutex_init (&priv->direct_lock);
+  g_cond_init (&priv->direct_cond);
+
+  priv->discover_pipeline = NULL;
+  priv->direct_pipe = NULL;
+  memset (&priv->res, 0x00, sizeof (GstRTPSMediaWFDTypeFindResult));
+  priv->stream_bin = NULL;
+  priv->mux = NULL;
+  priv->mux_queue = NULL;
+  priv->pay = NULL;
 
   g_mutex_init (&priv->lock);
 }
@@ -252,6 +315,10 @@ gst_rtsp_media_factory_wfd_finalize (GObject * obj)
     gst_rtsp_permissions_unref (priv->permissions);
   g_free (priv->launch);
   g_mutex_clear (&priv->lock);
+
+  g_mutex_clear (&priv->direct_lock);
+  g_cond_clear (&priv->direct_cond);
+
 
   if (priv->audio_device)
     g_free (priv->audio_device);
@@ -346,6 +413,7 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
 
   priv = factory->priv;
 
+  priv->audio_srcbin = (GstBin *)gst_bin_new ("audio");
   /* create audio src element */
   audiosrc = gst_element_factory_make ("pulsesrc", "audiosrc");
   if (!audiosrc) {
@@ -479,7 +547,8 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
       goto create_error;
     }
 
-    gst_bin_add_many (srcbin, audiosrc, acaps, aenc, aqueue, NULL);
+    gst_bin_add_many (priv->audio_srcbin, audiosrc, acaps, aenc, aqueue, NULL);
+    gst_bin_add (srcbin, GST_ELEMENT (priv->audio_srcbin));
 
     if (!gst_element_link_many (audiosrc, acaps, aenc, aqueue, NULL)) {
       GST_ERROR_OBJECT (factory, "Failed to link audio src elements...");
@@ -492,7 +561,8 @@ _rtsp_media_factory_wfd_create_audio_capture_bin (GstRTSPMediaFactoryWFD *
       goto create_error;
     }
 
-    gst_bin_add_many (srcbin, audiosrc, acaps2, audio_convert, acaps, aqueue, NULL);
+    gst_bin_add_many (priv->audio_srcbin, audiosrc, acaps2, audio_convert, acaps, aqueue, NULL);
+    gst_bin_add (srcbin, GST_ELEMENT (priv->audio_srcbin));
 
     if (!gst_element_link_many (audiosrc, acaps2, audio_convert, acaps, aqueue, NULL)) {
       GST_ERROR_OBJECT (factory, "Failed to link audio src elements...");
@@ -528,6 +598,7 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
   priv = factory->priv;
 
   GST_INFO_OBJECT (factory, "picked videotestsrc as video source");
+  priv->video_srcbin = (GstBin *)gst_bin_new ("video");
 
   videosrc = gst_element_factory_make ("videotestsrc", "videosrc");
   if (NULL == videosrc) {
@@ -603,7 +674,8 @@ _rtsp_media_factory_wfd_create_videotest_bin (GstRTSPMediaFactoryWFD * factory,
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, videoconvert, venc_caps, venc, vparse, vqueue, NULL);
+  gst_bin_add_many (priv->video_srcbin, videosrc, vcaps, videoconvert, venc_caps, venc, vparse, vqueue, NULL);
+  gst_bin_add (srcbin, GST_ELEMENT (priv->video_srcbin));
   if (!gst_element_link_many (videosrc, vcaps, videoconvert, venc_caps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
@@ -632,6 +704,7 @@ _rtsp_media_factory_wfd_create_waylandsrc_bin (GstRTSPMediaFactoryWFD * factory,
   priv = factory->priv;
 
   GST_INFO_OBJECT (factory, "picked waylandsrc as video source");
+  priv->video_srcbin = (GstBin *)gst_bin_new ("video");
 
   videosrc = gst_element_factory_make ("waylandsrc", "videosrc");
   if (NULL == videosrc) {
@@ -686,7 +759,8 @@ _rtsp_media_factory_wfd_create_waylandsrc_bin (GstRTSPMediaFactoryWFD * factory,
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  gst_bin_add_many (priv->video_srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  gst_bin_add (srcbin, GST_ELEMENT (priv->video_srcbin));
   if (!gst_element_link_many (videosrc, vcaps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
@@ -713,6 +787,7 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
   GstRTSPMediaFactoryWFDPrivate *priv = NULL;
 
   priv = factory->priv;
+  priv->video_srcbin = (GstBin *)gst_bin_new ("video");
 
   videosrc = gst_element_factory_make ("camerasrc", "videosrc");
   if (NULL == videosrc) {
@@ -768,7 +843,8 @@ _rtsp_media_factory_wfd_create_camera_capture_bin (GstRTSPMediaFactoryWFD *
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  gst_bin_add_many (priv->video_srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  gst_bin_add (srcbin, GST_ELEMENT (priv->video_srcbin));
 
   if (!gst_element_link_many (videosrc, vcaps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
@@ -800,6 +876,7 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
   priv = factory->priv;
 
   GST_INFO_OBJECT (factory, "picked ximagesrc as video source");
+  priv->video_srcbin = (GstBin *)gst_bin_new ("video");
 
   videosrc = gst_element_factory_make ("ximagesrc", "videosrc");
   if (NULL == videosrc) {
@@ -875,8 +952,9 @@ _rtsp_media_factory_wfd_create_xcapture_bin (GstRTSPMediaFactoryWFD * factory,
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, videoscale, videoconvert, vcaps, venc,
+  gst_bin_add_many (priv->video_srcbin, videosrc, videoscale, videoconvert, vcaps, venc,
       venc_caps, vparse, vqueue, NULL);
+  gst_bin_add (srcbin, GST_ELEMENT (priv->video_srcbin));
   if (!gst_element_link_many (videosrc, videoscale, videoconvert, vcaps, venc,
           venc_caps, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
@@ -906,6 +984,7 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
   priv = factory->priv;
 
   GST_INFO_OBJECT (factory, "picked xvimagesrc as video source");
+  priv->video_srcbin = (GstBin *)gst_bin_new ("video");
 
   videosrc = gst_element_factory_make ("xvimagesrc", "videosrc");
   if (NULL == videosrc) {
@@ -959,7 +1038,8 @@ _rtsp_media_factory_wfd_create_xvcapture_bin (GstRTSPMediaFactoryWFD * factory,
     goto create_error;
   }
 
-  gst_bin_add_many (srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  gst_bin_add_many (priv->video_srcbin, videosrc, vcaps, venc, vparse, vqueue, NULL);
+  gst_bin_add (srcbin, GST_ELEMENT (priv->video_srcbin));
   if (!gst_element_link_many (videosrc, vcaps, venc, vparse, vqueue, NULL)) {
     GST_ERROR_OBJECT (factory, "Failed to link video src elements...");
     goto create_error;
@@ -987,6 +1067,7 @@ _rtsp_media_factory_wfd_create_srcbin (GstRTSPMediaFactoryWFD * factory)
   GstPad *srcpad = NULL;
   GstPad *mux_vsinkpad = NULL;
   GstPad *mux_asinkpad = NULL;
+  GstPad *ghost_pad = NULL;
 
   priv = factory->priv;
 
@@ -1080,16 +1161,18 @@ _rtsp_media_factory_wfd_create_srcbin (GstRTSPMediaFactoryWFD * factory)
     GST_ERROR_OBJECT (factory, "Failed to get srcpad from video queue...");
     goto create_error;
   }
+  ghost_pad = gst_ghost_pad_new ("video_src", srcpad);
+  gst_element_add_pad (GST_ELEMENT (priv->video_srcbin), ghost_pad);
 
-  if (gst_pad_link (srcpad, mux_vsinkpad) != GST_PAD_LINK_OK) {
+  if (gst_pad_link (ghost_pad, mux_vsinkpad) != GST_PAD_LINK_OK) {
     GST_ERROR_OBJECT (factory,
         "Failed to link video queue src pad & muxer video sink pad...");
     goto create_error;
   }
 
-  gst_object_unref (mux_vsinkpad);
   gst_object_unref (srcpad);
   srcpad = NULL;
+  ghost_pad = NULL;
 
   /* create audio source elements & add to pipeline */
   if (!_rtsp_media_factory_wfd_create_audio_capture_bin (factory, srcbin))
@@ -1108,14 +1191,15 @@ _rtsp_media_factory_wfd_create_srcbin (GstRTSPMediaFactoryWFD * factory)
     GST_ERROR_OBJECT (factory, "Failed to get srcpad from audio queue...");
     goto create_error;
   }
+  ghost_pad = gst_ghost_pad_new ("audio_src", srcpad);
+  gst_element_add_pad (GST_ELEMENT (priv->audio_srcbin), ghost_pad);
 
   /* link audio queue's srcpad & muxer sink pad */
-  if (gst_pad_link (srcpad, mux_asinkpad) != GST_PAD_LINK_OK) {
+  if (gst_pad_link (ghost_pad, mux_asinkpad) != GST_PAD_LINK_OK) {
     GST_ERROR_OBJECT (factory,
         "Failed to link audio queue src pad & muxer audio sink pad...");
     goto create_error;
   }
-  gst_object_unref (mux_asinkpad);
   gst_object_unref (srcpad);
 
   if (priv->dump_ts)
@@ -1133,6 +1217,11 @@ _rtsp_media_factory_wfd_create_srcbin (GstRTSPMediaFactoryWFD * factory)
   }
 
   GST_DEBUG_OBJECT (factory, "successfully created source bin...");
+
+  priv->stream_bin = srcbin;
+  priv->mux = gst_object_ref (mux);
+  priv->mux_queue = gst_object_ref (mux_queue);
+  priv->pay = gst_object_ref (payload);
 
   return GST_ELEMENT_CAST (srcbin);
 
@@ -1202,4 +1291,570 @@ no_pipeline:
     g_object_unref (media);
     return NULL;
   }
+}
+
+gint type_detected = FALSE;
+gint linked = FALSE;
+static gint in_pad_probe;
+
+static GstPadProbeReturn
+_rtsp_media_factory_wfd_restore_pipe_probe_cb (GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+  GstPad *old_src = NULL;
+  GstPad *sink = NULL;
+  GstPad *old_sink = NULL;
+  GstPad *new_src = NULL;
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstRTSPMediaWFDDirectPipelineData *pipe_data = NULL;
+
+  if (!g_atomic_int_compare_and_exchange (&in_pad_probe, FALSE, TRUE))
+    return GST_PAD_PROBE_OK;
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+  priv = factory->priv;
+  pipe_data = priv->direct_pipe;
+
+  sink = gst_element_get_static_pad (priv->pay, "sink");
+  old_src = gst_pad_get_peer (sink);
+  gst_pad_unlink (old_src, sink);
+
+  new_src = gst_element_get_static_pad (priv->mux_queue, "src");
+  old_sink = gst_pad_get_peer (new_src);
+  gst_pad_unlink (new_src, old_sink);
+  gst_element_set_state (priv->stub_fs, GST_STATE_NULL);
+  gst_bin_remove ((GstBin *)priv->stream_bin, priv->stub_fs);
+
+  gst_pad_link (new_src, sink);
+  gst_object_unref (new_src);
+  gst_object_unref (old_sink);
+
+  gst_element_set_state (GST_ELEMENT(pipe_data->pipeline), GST_STATE_PAUSED);
+
+  /* signal that new pipeline linked */
+  g_mutex_lock (&priv->direct_lock);
+  linked = TRUE;
+  g_cond_signal (&priv->direct_cond);
+  g_mutex_unlock (&priv->direct_lock);
+
+  return GST_PAD_PROBE_REMOVE;
+}
+
+static gboolean
+_rtsp_media_factory_wfd_destroy_direct_pipe(void *user_data)
+{
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstRTSPMediaWFDDirectPipelineData *pipe_data = NULL;
+  GstPad *probe_pad;
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+  priv = factory->priv;
+  pipe_data = priv->direct_pipe;
+
+  probe_pad = gst_element_get_static_pad (priv->pay, "sink");
+
+  gst_element_sync_state_with_parent (GST_ELEMENT(priv->audio_srcbin));
+  gst_element_sync_state_with_parent (GST_ELEMENT(priv->video_srcbin));
+  gst_element_sync_state_with_parent (GST_ELEMENT(priv->mux));
+  gst_element_sync_state_with_parent (GST_ELEMENT(priv->mux_queue));
+
+  in_pad_probe = FALSE;
+  linked = FALSE;
+  gst_pad_add_probe (probe_pad, GST_PAD_PROBE_TYPE_IDLE, _rtsp_media_factory_wfd_restore_pipe_probe_cb, factory, NULL);
+
+  g_mutex_lock (&factory->priv->direct_lock);
+  while (linked != TRUE)
+    g_cond_wait (&factory->priv->direct_cond, &factory->priv->direct_lock);
+  g_mutex_unlock (&factory->priv->direct_lock);
+
+  GST_DEBUG_OBJECT (factory, "Deleting pipeline");
+  gst_element_set_state (GST_ELEMENT(pipe_data->pipeline), GST_STATE_NULL);
+  gst_bin_remove ((GstBin *)priv->stream_bin, GST_ELEMENT(pipe_data->pipeline));
+  g_free (pipe_data);
+  g_signal_emit (factory,
+      gst_rtsp_media_factory_wfd_signals[SIGNAL_DIRECT_STREAMING_END], 0, NULL);
+  return FALSE;
+}
+
+static void
+_rtsp_media_factory_wfd_demux_pad_added_cb (GstElement *element,
+              GstPad     *pad,
+              gpointer    data)
+{
+  GstPad *sinkpad = NULL;
+  GstCaps *caps = gst_pad_get_current_caps (pad);
+  gchar *pad_name = gst_pad_get_name (pad);
+  gchar *pad_caps = gst_caps_to_string (caps);
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstRTSPMediaWFDDirectPipelineData *pipe_data = NULL;
+
+  factory = (GstRTSPMediaFactoryWFD *) data;
+  priv = factory->priv;
+  pipe_data = priv->direct_pipe;
+
+  if (g_strrstr (g_ascii_strdown(pad_caps, -1), "audio")) {
+    sinkpad = gst_element_get_static_pad (pipe_data->ap, "sink");
+    if (gst_pad_is_linked (sinkpad)) {
+      gst_object_unref (sinkpad);
+      GST_DEBUG_OBJECT (factory, "pad linked");
+      return;
+    }
+    if (gst_pad_link (pad, sinkpad) != GST_PAD_LINK_OK)
+      GST_DEBUG_OBJECT (factory, "can't link demux %s pad", pad_name);
+
+    gst_object_unref (sinkpad);
+    sinkpad = NULL;
+  }
+  if (g_strrstr (g_ascii_strdown(pad_caps, -1), "video")) {
+    if (g_strrstr (g_ascii_strdown(pad_caps, -1), "h264")) {
+      sinkpad = gst_element_get_static_pad (pipe_data->vp, "sink");
+      if (gst_pad_link (pad, sinkpad) != GST_PAD_LINK_OK)
+        GST_DEBUG_OBJECT (factory, "can't link demux %s pad", pad_name);
+
+      gst_object_unref (sinkpad);
+      sinkpad = NULL;
+    }
+  }
+
+  g_free (pad_caps);
+  g_free (pad_name);
+}
+
+static GstPadProbeReturn
+_rtsp_media_factory_wfd_pay_pad_probe_cb (GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+{
+  GstPad *old_src = NULL;
+  GstPad *sink = NULL;
+  GstPad *old_sink = NULL;
+  GstPad *new_src = NULL;
+  GstPad *fas_sink = NULL;
+  GstPad *gp = NULL;
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstRTSPMediaWFDDirectPipelineData *pipe_data = NULL;
+
+  if (!g_atomic_int_compare_and_exchange (&in_pad_probe, FALSE, TRUE))
+    return GST_PAD_PROBE_OK;
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+  priv = factory->priv;
+  pipe_data = priv->direct_pipe;
+
+  sink = gst_element_get_static_pad (priv->pay, "sink");
+  old_src = gst_pad_get_peer (sink);
+  gst_pad_unlink (old_src, sink);
+
+  new_src = gst_element_get_static_pad (pipe_data->tsmux, "src");
+  old_sink = gst_pad_get_peer (new_src);
+  gst_pad_unlink (new_src, old_sink);
+  gst_element_set_state (pipe_data->mux_fs, GST_STATE_NULL);
+  gst_bin_remove ((GstBin *)pipe_data->pipeline, pipe_data->mux_fs);
+
+  gp = gst_ghost_pad_new ("audio_file", new_src);
+  gst_pad_set_active(gp,TRUE);
+  gst_element_add_pad (GST_ELEMENT (pipe_data->pipeline), gp);
+  gst_pad_link (gp, sink);
+  gst_object_unref (new_src);
+  gst_object_unref (old_sink);
+
+  priv->stub_fs = gst_element_factory_make ("fakesink", NULL);
+  gst_bin_add (priv->stream_bin, priv->stub_fs);
+  gst_element_sync_state_with_parent (priv->stub_fs);
+  fas_sink = gst_element_get_static_pad (priv->stub_fs, "sink");
+  gst_pad_link (old_src, fas_sink);
+  gst_object_unref (old_src);
+  gst_object_unref (fas_sink);
+  gst_element_set_state (GST_ELEMENT(priv->audio_srcbin), GST_STATE_PAUSED);
+  gst_element_set_state (GST_ELEMENT(priv->video_srcbin), GST_STATE_PAUSED);
+  gst_element_set_state (GST_ELEMENT(priv->mux), GST_STATE_PAUSED);
+  gst_element_set_state (GST_ELEMENT(priv->mux_queue), GST_STATE_PAUSED);
+
+  /* signal that new pipeline linked */
+  g_mutex_lock (&priv->direct_lock);
+  linked = TRUE;
+  g_cond_signal (&priv->direct_cond);
+  g_mutex_unlock (&priv->direct_lock);
+
+  return GST_PAD_PROBE_REMOVE;
+}
+
+
+static GstPadProbeReturn
+_rtsp_media_factory_wfd_src_pad_probe_cb(GstPad * pad, GstPadProbeInfo * info, gpointer user_data)
+{
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstEvent *event = GST_PAD_PROBE_INFO_EVENT(info);
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+
+  if (GST_EVENT_TYPE (event) == GST_EVENT_EOS) {
+    GST_INFO_OBJECT (factory, "Got event: %s in direct streaming", GST_EVENT_TYPE_NAME (event));
+    info->data = NULL;
+    info->data = gst_event_new_custom (GST_EVENT_CUSTOM_DOWNSTREAM, gst_structure_new_empty ("fillEOS"));
+    g_idle_add((GSourceFunc)_rtsp_media_factory_wfd_destroy_direct_pipe, factory);
+    return GST_PAD_PROBE_REMOVE;
+  }
+
+  return GST_PAD_PROBE_OK;
+}
+
+static void
+_rtsp_media_factory_wfd_create_direct_pipeline(GstRTSPMediaFactoryWFD * factory)
+{
+  GstElement *src = NULL;
+  GstElement *demux = NULL;
+  gchar *path = NULL;
+  GstPad *srcpad = NULL;
+  GstPad *mux_vsinkpad = NULL;
+  GstPad *mux_asinkpad = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstRTSPMediaWFDDirectPipelineData *pipe_data = NULL;
+
+  priv = factory->priv;
+  pipe_data = priv->direct_pipe;
+
+  pipe_data->pipeline = (GstBin *) gst_bin_new ("direct");
+
+  src = gst_element_factory_create(priv->res.src_fact, NULL);
+  demux = gst_element_factory_create(priv->res.demux_fact, NULL);
+  pipe_data->ap = gst_element_factory_make ("aacparse", NULL);
+  pipe_data->vp = gst_element_factory_make ("h264parse", NULL);
+  pipe_data->aq = gst_element_factory_make ("queue", NULL);
+  pipe_data->vq = gst_element_factory_make ("queue", NULL);
+  pipe_data->tsmux = gst_element_factory_make ("mpegtsmux", NULL);
+  pipe_data->mux_fs = gst_element_factory_make ("fakesink", NULL);
+
+  if (src == NULL || demux == NULL) {
+    GST_DEBUG_OBJECT (factory, "Not all element created");
+    return;
+  }
+
+  if (g_strrstr (g_ascii_strdown(g_type_name(G_OBJECT_TYPE(src)), -1), "file")) {
+    path = g_filename_from_uri (pipe_data->uri, NULL, NULL);
+    if (path == NULL) {
+      GST_DEBUG_OBJECT(factory, "No file path");
+      return;
+    }
+    g_object_set (src, "location", path, NULL);
+  } else
+    g_object_set (src, "uri", pipe_data->uri, NULL);
+
+  gst_bin_add_many (pipe_data->pipeline, src, demux, pipe_data->ap,
+      pipe_data->vp, pipe_data->aq, pipe_data->vq,
+      pipe_data->tsmux, pipe_data->mux_fs, NULL);
+
+  if (!gst_element_link (src, demux)) {
+    GST_DEBUG_OBJECT (factory, "Can't link src with demux");
+    return;
+  }
+
+  if (!gst_element_link (pipe_data->ap, pipe_data->aq)) {
+    GST_DEBUG_OBJECT (factory, "Can't link audio parse and queue");
+    return;
+  }
+
+  if (!gst_element_link (pipe_data->vp, pipe_data->vq)) {
+    GST_DEBUG_OBJECT (factory, "Can't link video parse and queue");
+    return;
+  }
+
+  if (!gst_element_link (pipe_data->tsmux, pipe_data->mux_fs)) {
+    GST_DEBUG_OBJECT (factory, "Can't link muxer and fakesink");
+    return;
+  }
+
+  g_signal_connect_object (demux, "pad-added", G_CALLBACK (_rtsp_media_factory_wfd_demux_pad_added_cb), factory, 0);
+
+  gst_bin_add (priv->stream_bin, GST_ELEMENT (pipe_data->pipeline));
+
+
+  /* request video sink pad from muxer, which has elementary pid 0x1011 */
+  mux_vsinkpad = gst_element_get_request_pad (pipe_data->tsmux, "sink_4113");
+  if (!mux_vsinkpad) {
+    GST_DEBUG_OBJECT (factory, "Failed to get sink pad from muxer...");
+    return;
+  }
+
+  /* request srcpad from video queue */
+  srcpad = gst_element_get_static_pad (pipe_data->vq, "src");
+  if (!srcpad) {
+    GST_DEBUG_OBJECT (factory, "Failed to get srcpad from video queue...");
+  }
+
+  if (gst_pad_link (srcpad, mux_vsinkpad) != GST_PAD_LINK_OK) {
+    GST_DEBUG_OBJECT (factory, "Failed to link video queue src pad & muxer video sink pad...");
+    return;
+  }
+
+  gst_object_unref (mux_vsinkpad);
+  gst_object_unref (srcpad);
+  srcpad = NULL;
+
+  /* request audio sink pad from muxer, which has elementary pid 0x1100 */
+  mux_asinkpad = gst_element_get_request_pad (pipe_data->tsmux, "sink_4352");
+  if (!mux_asinkpad) {
+    GST_DEBUG_OBJECT (factory, "Failed to get sinkpad from muxer...");
+    return;
+  }
+
+  /* request srcpad from audio queue */
+  srcpad = gst_element_get_static_pad (pipe_data->aq, "src");
+  if (!srcpad) {
+    GST_DEBUG_OBJECT (factory, "Failed to get srcpad from audio queue...");
+    return;
+  }
+
+  /* link audio queue's srcpad & muxer sink pad */
+  if (gst_pad_link (srcpad, mux_asinkpad) != GST_PAD_LINK_OK) {
+    GST_DEBUG_OBJECT (factory, "Failed to link audio queue src pad & muxer audio sink pad...");
+    return;
+  }
+  gst_object_unref (mux_asinkpad);
+  gst_object_unref (srcpad);
+  srcpad = NULL;
+
+  gst_element_sync_state_with_parent (GST_ELEMENT (pipe_data->pipeline));
+
+  srcpad = gst_element_get_static_pad (priv->pay, "sink");
+
+  in_pad_probe = FALSE;
+  gst_pad_add_probe (srcpad, GST_PAD_PROBE_TYPE_IDLE, _rtsp_media_factory_wfd_pay_pad_probe_cb, factory, NULL);
+  gst_pad_add_probe (srcpad, GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, _rtsp_media_factory_wfd_src_pad_probe_cb, factory, NULL);
+}
+
+static void
+_rtsp_media_factory_wfd_decodebin_element_added_cb (GstElement *decodebin,
+        GstElement *child, void *user_data)
+{
+  gchar *elem_name = g_ascii_strdown(g_type_name(G_OBJECT_TYPE(child)), -1);
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+  priv = factory->priv;
+
+  if (g_strrstr (elem_name, "h264"))
+    priv->res.h264_found++;
+  if (g_strrstr (elem_name, "aac"))
+    priv->res.aac_found++;
+  if (g_strrstr (elem_name, "ac3"))
+    priv->res.ac3_found++;
+  if (g_strrstr (elem_name, "demux"))
+    priv->res.demux_fact = gst_element_get_factory(child);
+}
+
+static void
+_rtsp_media_factory_wfd_uridecodebin_element_added_cb (GstElement *uridecodebin,
+        GstElement *child, void *user_data)
+{
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+  priv = factory->priv;
+
+  if (g_strrstr (g_ascii_strdown(g_type_name(G_OBJECT_TYPE(child)), -1), "src"))
+    priv->res.src_fact = gst_element_get_factory(child);
+
+  if (G_OBJECT_TYPE(child) == priv->decodebin_type)
+    g_signal_connect_object (child, "element-added",
+        G_CALLBACK (_rtsp_media_factory_wfd_decodebin_element_added_cb), factory, 0);
+}
+
+static void
+_rtsp_media_factory_wfd_discover_pad_added_cb (GstElement *uridecodebin, GstPad *pad,
+    GstBin *pipeline)
+{
+  GstPad *sinkpad = NULL;
+  GstCaps *caps;
+
+  GstElement *queue = gst_element_factory_make ("queue", NULL);
+  GstElement *sink = gst_element_factory_make ("fakesink", NULL);
+
+  if (G_UNLIKELY (queue == NULL || sink == NULL))
+    goto error;
+
+  g_object_set (sink, "silent", TRUE, NULL);
+  g_object_set (queue, "max-size-buffers", 1, "silent", TRUE, NULL);
+
+  caps = gst_pad_query_caps (pad, NULL);
+
+  sinkpad = gst_element_get_static_pad (queue, "sink");
+  if (sinkpad == NULL)
+    goto error;
+
+  gst_caps_unref (caps);
+
+  gst_bin_add_many (pipeline, queue, sink, NULL);
+
+  if (!gst_element_link_pads_full (queue, "src", sink, "sink",
+          GST_PAD_LINK_CHECK_NOTHING))
+    goto error;
+  if (!gst_element_sync_state_with_parent (sink))
+    goto error;
+  if (!gst_element_sync_state_with_parent (queue))
+    goto error;
+
+  if (gst_pad_link_full (pad, sinkpad,
+          GST_PAD_LINK_CHECK_NOTHING) != GST_PAD_LINK_OK)
+    goto error;
+  gst_object_unref (sinkpad);
+
+  return;
+
+error:
+  if (sinkpad)
+    gst_object_unref (sinkpad);
+  if (queue)
+    gst_object_unref (queue);
+  if (sink)
+    gst_object_unref (sink);
+  return;
+}
+
+static void
+_rtsp_media_factory_wfd_uridecode_no_pad_cb (GstElement * uridecodebin, void * user_data)
+{
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+
+  factory = (GstRTSPMediaFactoryWFD *) user_data;
+  priv = factory->priv;
+  type_detected = TRUE;
+  g_main_loop_quit (priv->discover_loop);
+}
+
+static void
+_rtsp_media_factory_wfd_discover_pipe_bus_call (GstBus *bus,
+          GstMessage *msg,
+          gpointer data)
+{
+  GstRTSPMediaFactoryWFD *factory = NULL;
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+
+  factory = (GstRTSPMediaFactoryWFD *) data;
+  priv = factory->priv;
+
+  switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_ERROR: {
+      gchar  *debug;
+      GError *error;
+
+      gst_message_parse_error (msg, &error, &debug);
+      g_free (debug);
+
+      GST_ERROR_OBJECT (factory, "Error: %s", error->message);
+      g_error_free (error);
+
+      type_detected = FALSE;
+      g_main_loop_quit (priv->discover_loop);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+static gboolean
+_rtsp_media_factory_wfd_find_media_type (GstRTSPMediaFactoryWFD * factory, gchar *uri)
+{
+  GstRTSPMediaFactoryWFDPrivate *priv = NULL;
+  GstElement *uridecode = NULL;
+  GstElement *tmp = NULL;
+  GstBus *bus;
+  GMainContext *context;
+  GSource *source;
+  guint id;
+
+  priv = factory->priv;
+
+  context = g_main_context_new();
+  priv->discover_loop = g_main_loop_new(context, FALSE);
+
+  tmp = gst_element_factory_make ("decodebin", NULL);
+  priv->decodebin_type = G_OBJECT_TYPE (tmp);
+  gst_object_unref (tmp);
+
+  /* if a URI was provided, use it instead of the default one */
+  priv->discover_pipeline = (GstBin *) gst_pipeline_new ("Discover");
+  uridecode = gst_element_factory_make("uridecodebin", "uri");
+  g_object_set (G_OBJECT (uridecode), "uri", uri, NULL);
+  gst_bin_add (priv->discover_pipeline, uridecode);
+  if (priv->discover_pipeline == NULL || uridecode == NULL) {
+    GST_INFO_OBJECT (factory, "Failed to create type find pipeline");
+    type_detected = FALSE;
+    return FALSE;
+  }
+
+  /* we add a message handler */
+  bus = gst_pipeline_get_bus (GST_PIPELINE (priv->discover_pipeline));
+  source = gst_bus_create_watch (bus);
+  gst_bus_add_signal_watch (bus);
+
+  g_source_set_callback (source, (GSourceFunc) gst_bus_async_signal_func, NULL, NULL);
+  id = g_source_attach (source, context);
+  g_signal_connect_object (bus, "message",
+      G_CALLBACK (_rtsp_media_factory_wfd_discover_pipe_bus_call), factory, 0);
+
+  g_signal_connect_object (uridecode, "pad-added",
+      G_CALLBACK (_rtsp_media_factory_wfd_discover_pad_added_cb), priv->discover_pipeline, 0);
+  g_signal_connect_object (uridecode, "element-added",
+            G_CALLBACK (_rtsp_media_factory_wfd_uridecodebin_element_added_cb),
+            factory, 0);
+  g_signal_connect_object (uridecode, "no-more-pads",
+            G_CALLBACK (_rtsp_media_factory_wfd_uridecode_no_pad_cb), factory, 0);
+  gst_element_set_state (GST_ELEMENT (priv->discover_pipeline), GST_STATE_PLAYING);
+
+  g_main_loop_run(priv->discover_loop);
+
+  gst_element_set_state (GST_ELEMENT (priv->discover_pipeline), GST_STATE_NULL);
+  g_source_destroy(source);
+  g_source_unref (source);
+  g_main_loop_unref(priv->discover_loop);
+  g_main_context_unref(context);
+  gst_object_unref(bus);
+  gst_object_unref (GST_OBJECT (priv->discover_pipeline));
+
+  return TRUE;
+}
+
+gint
+gst_rtsp_media_factory_wfd_set_direct_streaming(GstRTSPMediaFactory * factory,
+    gint direct_streaming, gchar *filesrc)
+{
+  GstRTSPMediaFactoryWFD *_factory = GST_RTSP_MEDIA_FACTORY_WFD_CAST (factory);
+  type_detected = FALSE;
+  linked = FALSE;
+
+  if (direct_streaming == 0) {
+    _rtsp_media_factory_wfd_destroy_direct_pipe ((void *)_factory);
+
+    GST_INFO_OBJECT (_factory, "Direct streaming bin removed");
+
+    return GST_RTSP_OK;
+  }
+
+  _rtsp_media_factory_wfd_find_media_type (_factory, filesrc);
+
+  if (type_detected == FALSE) {
+    GST_ERROR_OBJECT (_factory, "Media type cannot be detected");
+    return GST_RTSP_ERROR;
+  }
+  GST_INFO_OBJECT (_factory, "Media type detected");
+
+  _factory->priv->direct_pipe = g_new0 (GstRTSPMediaWFDDirectPipelineData, 1);
+  _factory->priv->direct_pipe->uri = g_strdup(filesrc);
+
+  _rtsp_media_factory_wfd_create_direct_pipeline(_factory);
+
+  g_mutex_lock (&_factory->priv->direct_lock);
+  while (linked != TRUE)
+    g_cond_wait (&_factory->priv->direct_cond, &_factory->priv->direct_lock);
+  g_mutex_unlock (&_factory->priv->direct_lock);
+
+  GST_INFO_OBJECT (_factory, "Direct streaming bin created");
+
+  return GST_RTSP_OK;
 }

@@ -330,3 +330,33 @@ gst_rtsp_wfd_server_set_audio_codec (GstRTSPWFDServer *server, guint8 audio_code
   GST_RTSP_WFD_SERVER_UNLOCK (server);
   return res;
 }
+GstRTSPResult
+gst_rtsp_wfd_server_set_direct_streaming (GstRTSPWFDServer *server,
+    gint direct_streaming, gchar *urisrc)
+{
+  GstRTSPResult res = GST_RTSP_OK;
+  GList *clients, *walk, *next;
+
+  g_return_val_if_fail (GST_IS_RTSP_SERVER (server), GST_RTSP_ERROR);
+
+  clients = gst_rtsp_server_client_filter (GST_RTSP_SERVER(server), NULL, NULL);
+  if (clients == NULL) {
+    GST_ERROR_OBJECT (server, "There is no client in this server");
+  }
+
+  for (walk = clients; walk; walk = next) {
+    GstRTSPClient *client = walk->data;
+
+    next = g_list_next (walk);
+
+    res =
+        gst_rtsp_wfd_client_set_direct_streaming (GST_RTSP_WFD_CLIENT (client),
+        direct_streaming, urisrc);
+    if (res != GST_RTSP_OK) {
+      GST_ERROR_OBJECT (server, "Failed to set direct streaming to %d", direct_streaming);
+    }
+    g_object_unref (client);
+  }
+
+  return res;
+}
