@@ -1811,7 +1811,7 @@ media_streams_set_blocked (GstRTSPMedia * media, gboolean blocked)
   g_ptr_array_foreach (priv->streams, (GFunc) stream_update_blocked, media);
 }
 
-static void
+void
 gst_rtsp_media_set_status (GstRTSPMedia * media, GstRTSPMediaStatus status)
 {
   GstRTSPMediaPrivate *priv = media->priv;
@@ -2061,8 +2061,8 @@ set_state (GstRTSPMedia * media, GstState state)
   return ret;
 }
 
-static GstStateChangeReturn
-set_target_state (GstRTSPMedia * media, GstState state, gboolean do_state)
+GstStateChangeReturn
+gst_rtsp_media_set_target_state (GstRTSPMedia * media, GstState state, gboolean do_state)
 {
   GstRTSPMediaPrivate *priv = media->priv;
   GstStateChangeReturn ret;
@@ -2401,7 +2401,7 @@ start_preroll (GstRTSPMedia * media)
 
   GST_INFO ("setting pipeline to PAUSED for media %p", media);
   /* first go to PAUSED */
-  ret = set_target_state (media, GST_STATE_PAUSED, TRUE);
+  ret = gst_rtsp_media_set_target_state (media, GST_STATE_PAUSED, TRUE);
 
   switch (ret) {
     case GST_STATE_CHANGE_SUCCESS:
@@ -2875,7 +2875,7 @@ gst_rtsp_media_unprepare (GstRTSPMedia * media)
   GST_INFO ("unprepare media %p", media);
   if (priv->blocked)
     media_streams_set_blocked (media, FALSE);
-  set_target_state (media, GST_STATE_NULL, FALSE);
+  gst_rtsp_media_set_target_state (media, GST_STATE_NULL, FALSE);
   success = TRUE;
 
   if (priv->status == GST_RTSP_MEDIA_STATUS_PREPARED) {
@@ -3722,14 +3722,14 @@ default_suspend (GstRTSPMedia * media)
       break;
     case GST_RTSP_SUSPEND_MODE_PAUSE:
       GST_DEBUG ("media %p suspend to PAUSED", media);
-      ret = set_target_state (media, GST_STATE_PAUSED, TRUE);
+      ret = gst_rtsp_media_set_target_state (media, GST_STATE_PAUSED, TRUE);
       if (ret == GST_STATE_CHANGE_FAILURE)
         goto state_failed;
       unblock = TRUE;
       break;
     case GST_RTSP_SUSPEND_MODE_RESET:
       GST_DEBUG ("media %p suspend to NULL", media);
-      ret = set_target_state (media, GST_STATE_NULL, TRUE);
+      ret = gst_rtsp_media_set_target_state (media, GST_STATE_NULL, TRUE);
       if (ret == GST_STATE_CHANGE_FAILURE)
         goto state_failed;
       /* Because payloader needs to set the sequence number as
@@ -3912,7 +3912,7 @@ media_set_pipeline_state_locked (GstRTSPMedia * media, GstState state)
     gst_rtsp_media_unprepare (media);
   } else {
     GST_INFO ("state %s media %p", gst_element_state_get_name (state), media);
-    set_target_state (media, state, FALSE);
+    gst_rtsp_media_set_target_state (media, state, FALSE);
     /* when we are buffering, don't update the state yet, this will be done
      * when buffering finishes */
     if (priv->buffering) {

@@ -257,6 +257,8 @@ gboolean              gst_rtsp_media_set_state        (GstRTSPMedia *media, GstS
                                                        GPtrArray *transports);
 void                  gst_rtsp_media_set_pipeline_state (GstRTSPMedia * media,
                                                          GstState state);
+GstStateChangeReturn  gst_rtsp_media_set_target_state (GstRTSPMedia * media, GstState state, gboolean do_state);
+void 	      	      gst_rtsp_media_set_status (GstRTSPMedia * media, GstRTSPMediaStatus status);
 
 G_END_DECLS
 
