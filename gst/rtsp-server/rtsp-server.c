@@ -230,6 +230,7 @@ gst_rtsp_server_class_init (GstRTSPServerClass * klass)
       GST_TYPE_RTSP_CLIENT);
 
   klass->create_client = default_create_client;
+  klass->create_socket = gst_rtsp_server_create_socket;
 
   GST_DEBUG_CATEGORY_INIT (rtsp_server_debug, "rtspserver", 0, "GstRTSPServer");
 }
@@ -1256,14 +1257,18 @@ gst_rtsp_server_create_source (GstRTSPServer * server,
     GCancellable * cancellable, GError ** error)
 {
   GstRTSPServerPrivate *priv;
+  GstRTSPServerClass *klass;
   GSocket *socket, *old;
   GSource *source;
 
   g_return_val_if_fail (GST_IS_RTSP_SERVER (server), NULL);
 
   priv = server->priv;
+  klass = GST_RTSP_SERVER_GET_CLASS (server);
 
-  socket = gst_rtsp_server_create_socket (server, NULL, error);
+  if (klass->create_socket)
+    socket = klass->create_socket (server, NULL, error);
+
   if (socket == NULL)
     goto no_socket;
 
