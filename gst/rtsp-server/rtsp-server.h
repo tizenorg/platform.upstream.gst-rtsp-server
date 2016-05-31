@@ -85,6 +85,7 @@ struct _GstRTSPServerClass {
   GObjectClass  parent_class;
 
   GstRTSPClient * (*create_client)      (GstRTSPServer *server);
+  GSocket * (*create_socket)      (GstRTSPServer * server,  GCancellable * cancellable, GError ** error);
 
   /* signals */
   void            (*client_connected)   (GstRTSPServer *server, GstRTSPClient *client);

@@ -3944,3 +3944,26 @@ restart:
 
   return result;
 }
+
+/**
+ * gst_rtsp_client_set_watch_flushing:
+ * @client: a #GstRTSPClient
+ * @val: a boolean value
+ *
+ * sets watch flushing to @val on watch to accet/ignore new messages.
+ */
+void
+gst_rtsp_client_set_watch_flushing (GstRTSPClient * client, gboolean val)
+{
+  GstRTSPClientPrivate *priv = NULL;
+  g_return_if_fail (GST_IS_RTSP_CLIENT (client));
+
+  priv = GST_RTSP_CLIENT_GET_PRIVATE (client);
+
+  /* make sure we unblock/block the backlog and accept/don't accept new messages on the watch */
+  if (priv->watch != NULL)
+  {
+     GST_INFO("Set watch flushing as %d", val);
+     gst_rtsp_watch_set_flushing (priv->watch, val);
+  }
+}

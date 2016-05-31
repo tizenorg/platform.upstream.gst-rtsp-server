@@ -171,6 +171,7 @@ GstRTSPResult         gst_rtsp_client_handle_message    (GstRTSPClient *client,
 GstRTSPResult         gst_rtsp_client_send_message      (GstRTSPClient * client,
                                                          GstRTSPSession *session,
                                                          GstRTSPMessage *message);
+void                  gst_rtsp_client_set_watch_flushing (GstRTSPClient * client, gboolean val);
 /**
  * GstRTSPClientSessionFilterFunc:
  * @client: a #GstRTSPClient object

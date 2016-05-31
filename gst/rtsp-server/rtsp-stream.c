@@ -184,6 +184,7 @@ enum
 {
   SIGNAL_NEW_RTP_ENCODER,
   SIGNAL_NEW_RTCP_ENCODER,
+  SIGNAL_RTCP_STATS,
   SIGNAL_LAST
 };
 
@@ -240,6 +241,11 @@ gst_rtsp_stream_class_init (GstRTSPStreamClass * klass)
       g_signal_new ("new-rtcp-encoder", G_TYPE_FROM_CLASS (klass),
       G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_generic,
       G_TYPE_NONE, 1, GST_TYPE_ELEMENT);
+
+  gst_rtsp_stream_signals[SIGNAL_RTCP_STATS] =
+      g_signal_new ("rtcp-statistics", G_TYPE_FROM_CLASS (klass),
+      G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_generic,
+      G_TYPE_NONE, 1, GST_TYPE_STRUCTURE);
 
   GST_DEBUG_CATEGORY_INIT (rtsp_stream_debug, "rtspstream", 0, "GstRTSPStream");
 
@@ -1594,6 +1600,8 @@ check_transport (GObject * source, GstRTSPStream * stream)
 
       dump_structure (stats);
 
+      g_signal_emit (stream, gst_rtsp_stream_signals[SIGNAL_RTCP_STATS], 0, stats);
+
       rtcp_from = gst_structure_get_string (stats, "rtcp-from");
       if ((trans = find_transport (stream, rtcp_from))) {
         GST_INFO ("%p: found transport %p for source  %p", stream, trans,
@@ -1643,6 +1651,8 @@ on_ssrc_active (GObject * session, GObject * source, GstRTSPStream * stream)
     GstStructure *stats;
     g_object_get (source, "stats", &stats, NULL);
     if (stats) {
+      g_signal_emit (stream, gst_rtsp_stream_signals[SIGNAL_RTCP_STATS], 0, stats);
+
       dump_structure (stats);
       gst_structure_free (stats);
     }
